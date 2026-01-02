@@ -4,6 +4,33 @@
  */
 
 /**
+ * Obtener ruta relativa de imagen
+ * Convierte rutas absolutas o de sistema de archivos a relativas web
+ */
+function getRelativeImagePath(path) {
+    if (!path) return null;
+    // Si es base64, retornar tal cual
+    if (path.startsWith('data:image')) return path;
+    // Si es http/https, retornar tal cual
+    if (path.startsWith('http')) return path;
+    
+    // Normalizar slashes
+    let cleanPath = path.replace(/\\/g, '/');
+    
+    // Si contiene 'public/', tomar lo que sigue
+    if (cleanPath.includes('public/')) {
+        cleanPath = cleanPath.split('public/')[1];
+    }
+    
+    // Eliminar slash inicial si existe para hacerlo relativo
+    if (cleanPath.startsWith('/')) {
+        cleanPath = cleanPath.substring(1);
+    }
+    
+    return cleanPath;
+}
+
+/**
  * Verificar sesión activa
  */
 async function checkSession() {

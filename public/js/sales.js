@@ -307,13 +307,15 @@ async function searchProducts(term) {
     }
 
     // Renderizar resultados con el mismo estilo que la galería principal
-    searchResults.innerHTML = list.map((p, index) => `
-      <div class="gallery-item" data-id="${p.product_id}" data-price="${p.price}" data-stock="${p.stock_quantity !== undefined ? p.stock_quantity : ''}" data-image="${p.image_path || ''}" title="${escapeHtml(p.product_name)}" style="animation-delay: ${Math.min(index * 0.05, 0.5)}s">
-        <div class="img-wrap">${p.image_path ? `<img src="/${p.image_path}" alt="img">` : '<span class="no-img">Sin imagen</span>'}</div>
+    searchResults.innerHTML = list.map((p, index) => {
+      const imagePath = getRelativeImagePath(p.image_path);
+      return `
+      <div class="gallery-item" data-id="${p.product_id}" data-price="${p.price}" data-stock="${p.stock_quantity !== undefined ? p.stock_quantity : ''}" data-image="${p.image_path || ''}" data-is_bulk="${p.is_bulk || 0}" data-bulk_unit="${p.bulk_unit || 'kg'}" title="${escapeHtml(p.product_name)}" style="animation-delay: ${Math.min(index * 0.05, 0.5)}s">
+        <div class="img-wrap">${imagePath ? `<img src="${imagePath}" alt="img" onerror="this.outerHTML='<span class=\\'no-img\\'>Sin imagen</span>'">` : '<span class="no-img">Sin imagen</span>'}</div>
         <div class="g-name">${escapeHtml(p.product_name)}</div>
         <div class="g-price">${formatCurrency(p.price)}</div>
       </div>
-    `).join('');
+    `}).join('');
 
     productGallery.style.display = 'none';
     searchResults.classList.remove('hidden');
@@ -328,7 +330,9 @@ async function searchProducts(term) {
           product_name: el.querySelector('.g-name').textContent,
           unit_price: parseFloat(el.getAttribute('data-price')),
           image_path: el.getAttribute('data-image'),
-          stock_quantity: parseInt(el.getAttribute('data-stock')) // Asumiendo que viene en data-stock o similar, si no, undefined
+          stock_quantity: parseInt(el.getAttribute('data-stock')),
+          is_bulk: parseInt(el.getAttribute('data-is_bulk')) || 0,
+          bulk_unit: el.getAttribute('data-bulk_unit') || 'kg'
         });
 
         // Pequeño delay para apreciar el feedback antes de cerrar resultados
@@ -345,6 +349,12 @@ async function searchProducts(term) {
 }
 
 function addProductToCart(prod) {
+  // Si es producto a granel, solicitar cantidad primero
+  if (prod.is_bulk == 1) {
+    promptBulkQuantity(prod);
+    return;
+  }
+
   const existing = CART.find(i => i.product_id === prod.product_id);
 
   // Validación de Stock
@@ -374,7 +384,9 @@ function addProductToCart(prod) {
       discount_value: 0,
       nxn_buy: 0,
       nxn_pay: 0,
-      stock_quantity: maxStock // Guardar referencia del stock
+      stock_quantity: maxStock, // Guardar referencia del stock
+      is_bulk: prod.is_bulk || 0,
+      bulk_unit: prod.bulk_unit || 'kg'
     });
   }
   playSound('Sound2.mp3');
@@ -404,8 +416,8 @@ function renderCart() {
     emptyCartMsg.style.display = 'none';
     if (finalizeSaleBtn) finalizeSaleBtn.disabled = false;
 
-    // Calculate total items count
-    const totalItems = CART.reduce((sum, item) => sum + item.quantity, 0);
+    // Contar cantidad de productos DIFERENTES (no la suma de cantidades)
+    const totalItems = CART.length;
     if (cartBadge) {
       cartBadge.textContent = totalItems;
       cartBadge.style.display = 'flex';
@@ -413,11 +425,10 @@ function renderCart() {
 
     cartBody.innerHTML = CART.map(item => {
       let imgHtml = '<div class="cart-item-img-placeholder"><i class="fas fa-box"></i></div>';
-      if (item.image_path) {
-        // Ensure path is correct
-        let src = item.image_path;
-        if (!src.startsWith('/') && !src.startsWith('http')) src = '/' + src;
-        imgHtml = `<img src="${src}" alt="img" class="cart-item-img">`;
+      const imagePath = getRelativeImagePath(item.image_path);
+      
+      if (imagePath) {
+        imgHtml = `<img src="${imagePath}" alt="img" class="cart-item-img" onerror="this.outerHTML='<div class=\\'cart-item-img-placeholder\\'><i class=\\'fas fa-box\\'></i></div>'">`;
       }
 
       // Price display (show original crossed out if discounted)
@@ -428,6 +439,9 @@ function renderCart() {
                 <span class="new-price">${formatCurrency(item.unit_price)}</span>
             </div>`;
       }
+      
+      // Mostrar unidad para productos a granel
+      const unitLabel = item.is_bulk == 1 ? ` ${item.bulk_unit || 'kg'}` : '';
 
       return `<tr>
       <td>
@@ -437,7 +451,7 @@ function renderCart() {
         </div>
       </td>
       <td>${priceHtml}</td>
-      <td><input type="number" min="1" value="${item.quantity}" data-id="${item.product_id}" class="qty-input"></td>
+      <td><input type="number" ${item.is_bulk == 1 ? 'step="0.001"' : ''} min="${item.is_bulk == 1 ? '0.001' : '1'}" value="${item.quantity}" data-id="${item.product_id}" class="qty-input">${unitLabel}</td>
       <td>
         <div class="cart-actions">
             <button class="edit-btn" data-id="${item.product_id}" title="Editar precio/descuento"><i class="fas fa-pencil-alt"></i></button>
@@ -450,9 +464,16 @@ function renderCart() {
     // Bind qty changes
     Array.from(cartBody.querySelectorAll('.qty-input')).forEach(inp => {
       inp.addEventListener('input', () => {
-        let q = parseInt(inp.value); if (!q || q < 1) q = 1; inp.value = q;
         const id = parseInt(inp.getAttribute('data-id'));
         const it = CART.find(i => i.product_id === id);
+        
+        // Para productos a granel, permitir decimales
+        let q = it && it.is_bulk == 1 ? parseFloat(inp.value) : parseInt(inp.value);
+        const minQty = it && it.is_bulk == 1 ? 0.001 : 1;
+        
+        if (!q || q < minQty) q = minQty;
+        inp.value = q;
+        
         if (it) {
           it.quantity = q;
           recalcItemPrice(it);
@@ -482,13 +503,191 @@ function renderCart() {
   recalcTotals();
 }
 
+// Función para solicitar cantidad/peso de productos a granel
+function promptBulkQuantity(prod) {
+  const unit = prod.bulk_unit || 'kg';
+  const unitLabel = unit === 'kg' ? 'kilogramos' : 
+                    unit === 'g' ? 'gramos' :
+                    unit === 'L' ? 'litros' :
+                    unit === 'mL' ? 'mililitros' :
+                    unit === 'lb' ? 'libras' :
+                    unit === 'oz' ? 'onzas' :
+                    unit === 'pza' ? 'piezas' :
+                    unit === 'm' ? 'metros' : unit;
+
+  // Verificar si hay balanza disponible
+  const hasScale = window.scaleManager && window.scaleManager.isConnected;
+
+  // Crear modal simple para ingreso de cantidad
+  const modalHtml = `
+    <div id="bulkQuantityModal" class="modal-overlay active">
+      <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+          <h3><i class="fas fa-weight-hanging"></i> ${escapeHtml(prod.product_name)}</h3>
+          <button class="modal-close" onclick="closeBulkModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+          <p style="margin-bottom: 10px; color: #666;">
+            <strong>Precio por ${unit}:</strong> ${formatCurrency(prod.unit_price)}
+          </p>
+          <div class="form-group">
+            <label for="bulkQuantityInput">Cantidad en ${unitLabel}:</label>
+            <input type="number" id="bulkQuantityInput" step="0.001" min="0.001" placeholder="Ej: 1.5" 
+                   style="width: 100%; padding: 10px; font-size: 1.1rem;" autofocus>
+          </div>
+          ${hasScale ? `
+            <div style="margin-top: 10px; padding: 10px; background: #e8f5e9; border-radius: 6px; text-align: center;">
+              <p style="color: #2e7d32; margin: 0; font-size: 0.9rem; font-weight: 600;">
+                <i class="fas fa-balance-scale"></i> Leyendo balanza...
+              </p>
+              <p style="color: #558b2f; margin: 5px 0 0 0; font-size: 0.85rem;">
+                Peso actual: <strong id="bulkScaleWeight">--.--</strong> ${unit}
+              </p>
+            </div>
+          ` : ''}
+          <div id="bulkTotalPreview" style="margin-top: 15px; padding: 10px; background: #f0f0f0; border-radius: 6px; text-align: center;">
+            <strong>Total: $0.00</strong>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" onclick="closeBulkModal()">Cancelar</button>
+          ${hasScale ? `<button class="btn-secondary" onclick="useBulkScaleWeight()" style="flex: 1;">
+            <i class="fas fa-sync"></i> Usar Peso de Balanza
+          </button>` : ''}
+          <button class="btn-primary" onclick="confirmBulkQuantity()">Agregar al Carrito</button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Insertar modal en el DOM
+  let modalContainer = document.getElementById('bulkQuantityModal');
+  if (modalContainer) modalContainer.remove();
+  
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  // Guardar producto temporalmente
+  window._tempBulkProduct = prod;
+  window._bulkScaleLastWeight = null;
+  
+  // Auto-calcular total al escribir
+  const input = document.getElementById('bulkQuantityInput');
+  const preview = document.getElementById('bulkTotalPreview');
+  input.addEventListener('input', () => {
+    const qty = parseFloat(input.value) || 0;
+    const total = qty * prod.unit_price;
+    preview.innerHTML = `<strong>Total: ${formatCurrency(total)}</strong>`;
+  });
+  
+  // Permitir confirmar con Enter
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') confirmBulkQuantity();
+  });
+  
+  // Si hay balanza, monitorear peso
+  if (hasScale && window.scaleManager) {
+    const scaleCallback = (data) => {
+      window._bulkScaleLastWeight = data.weight;
+      const weightEl = document.getElementById('bulkScaleWeight');
+      if (weightEl) {
+        weightEl.textContent = data.weight.toFixed(3);
+      }
+    };
+    
+    // Registrar temporalmente el callback
+    window._bulkScaleCallback = scaleCallback;
+    if (window.scaleManager.on) {
+      window.scaleManager.on('onWeight', scaleCallback);
+    }
+  }
+  
+  // Enfocar input
+  setTimeout(() => input.focus(), 100);
+}
+
+// Cerrar modal de cantidad a granel
+function closeBulkModal() {
+  const modal = document.getElementById('bulkQuantityModal');
+  if (modal) modal.remove();
+  
+  // Limpiar callback de balanza
+  if (window._bulkScaleCallback && window.scaleManager && window.scaleManager.off) {
+    window.scaleManager.off('onWeight', window._bulkScaleCallback);
+  }
+  
+  window._tempBulkProduct = null;
+  window._bulkScaleLastWeight = null;
+  window._bulkScaleCallback = null;
+}
+
+// Usar el peso de la balanza en el campo de cantidad
+function useBulkScaleWeight() {
+  if (!window._bulkScaleLastWeight) {
+    showNotification('Esperando peso de la balanza...', 'warning');
+    return;
+  }
+  
+  const input = document.getElementById('bulkQuantityInput');
+  if (input) {
+    input.value = window._bulkScaleLastWeight.toFixed(3);
+    input.dispatchEvent(new Event('input'));
+    input.focus();
+  }
+}
+
+// Confirmar y agregar producto a granel al carrito
+function confirmBulkQuantity() {
+  const input = document.getElementById('bulkQuantityInput');
+  const quantity = parseFloat(input.value);
+  
+  if (!quantity || quantity <= 0) {
+    showNotification('Ingresa una cantidad válida', 'warning');
+    input.focus();
+    return;
+  }
+  
+  const prod = window._tempBulkProduct;
+  if (!prod) return;
+  
+  // Buscar si ya existe en el carrito
+  const existing = CART.find(i => i.product_id === prod.product_id);
+  
+  if (existing) {
+    existing.quantity = parseFloat(existing.quantity) + quantity;
+    recalcItemPrice(existing);
+  } else {
+    CART.push({
+      product_id: prod.product_id,
+      product_name: prod.product_name,
+      unit_price: prod.unit_price,
+      original_price: prod.unit_price,
+      quantity: quantity,
+      subtotal: prod.unit_price * quantity,
+      image_path: prod.image_path,
+      discount_type: 'none',
+      discount_value: 0,
+      nxn_buy: 0,
+      nxn_pay: 0,
+      stock_quantity: prod.stock_quantity,
+      is_bulk: 1,
+      bulk_unit: prod.bulk_unit || 'kg'
+    });
+  }
+  
+  playSound('Sound2.mp3');
+  renderCart();
+  showNotification(`${quantity} ${prod.bulk_unit} agregados`, 'success');
+  closeBulkModal();
+}
+
 // Helper para badges de pestañas
 function updateTabBadge(tabId) {
   const btn = document.querySelector(`.cart-tab-btn[data-tab="${tabId}"]`);
   if (!btn) return;
 
   const items = MULTI_CARTS[tabId] || [];
-  const count = items.reduce((s, i) => s + i.quantity, 0);
+  // Contar cantidad de productos DIFERENTES (no la suma de cantidades)
+  const count = items.length;
 
   let badge = btn.querySelector('.tab-badge');
   if (badge) {
@@ -1151,11 +1350,14 @@ function renderGallery(list, animate = false) {
   }
 
   // Renderizar items (ocultos si se va a animar)
-  productGallery.innerHTML = list.map(p => `<div class="gallery-item" data-id="${p.product_id}" data-price="${p.price}" data-stock="${p.stock_quantity !== undefined ? p.stock_quantity : ''}" data-image="${p.image_path || ''}" title="${escapeHtml(p.product_name)}" style="opacity: ${animate ? 0 : 1};">
-        <div class="img-wrap">${p.image_path ? `<img src="/${p.image_path}" alt="img">` : '<span class="no-img">Sin imagen</span>'}</div>
+  productGallery.innerHTML = list.map(p => {
+    const imagePath = getRelativeImagePath(p.image_path);
+    return `<div class="gallery-item" data-id="${p.product_id}" data-price="${p.price}" data-stock="${p.stock_quantity !== undefined ? p.stock_quantity : ''}" data-image="${p.image_path || ''}" data-is_bulk="${p.is_bulk || 0}" data-bulk_unit="${p.bulk_unit || 'kg'}" title="${escapeHtml(p.product_name)}" style="opacity: ${animate ? 0 : 1};">
+        <div class="img-wrap">${imagePath ? `<img src="${imagePath}" alt="img" onerror="this.outerHTML='<span class=\\'no-img\\'>Sin imagen</span>'">` : '<span class="no-img">Sin imagen</span>'}</div>
         <div class="g-name">${escapeHtml(p.product_name)}</div>
         <div class="g-price">${formatCurrency(p.price)}</div>
-      </div>`).join('');
+      </div>`;
+  }).join('');
 
   Array.from(productGallery.querySelectorAll('.gallery-item')).forEach(el => {
     el.addEventListener('click', () => {
@@ -1168,7 +1370,9 @@ function renderGallery(list, animate = false) {
         product_name: el.querySelector('.g-name').textContent,
         unit_price: parseFloat(el.getAttribute('data-price')),
         image_path: el.getAttribute('data-image'),
-        stock_quantity: parseInt(el.getAttribute('data-stock'))
+        stock_quantity: parseInt(el.getAttribute('data-stock')),
+        is_bulk: parseInt(el.getAttribute('data-is_bulk')) || 0,
+        bulk_unit: el.getAttribute('data-bulk_unit') || 'kg'
       });
     });
   });
@@ -1322,7 +1526,9 @@ async function fetchByCode(code) {
         product_name: p.product_name,
         unit_price: parseFloat(p.price),
         image_path: p.image_path,
-        stock_quantity: p.stock_quantity // Asegurar que el backend lo envíe
+        stock_quantity: p.stock_quantity, // Asegurar que el backend lo envíe
+        is_bulk: p.is_bulk || 0,
+        bulk_unit: p.bulk_unit || 'kg'
       });
       showScannedProductOverlay(p);
       showNotification('Producto añadido', 'success');
@@ -1348,14 +1554,12 @@ function showScannedProductOverlay(product) {
   }
 
   // Ajustar ruta de imagen si es relativa
-  let imgPath = product.image_path;
-  if (imgPath && !imgPath.startsWith('http') && !imgPath.startsWith('/')) {
-    imgPath = '/' + imgPath;
-  }
-  // if (!imgPath) imgPath = '/Tomodachi/public/assets/images/no-image.png';
+  let imgPath = getRelativeImagePath(product.image_path);
+  
+  // if (!imgPath) imgPath = 'assets/images/no-image.png';
 
   // Escapar comillas simples para CSS url()
-  const cssImgPath = imgPath.replace(/'/g, "\\'");
+  const cssImgPath = imgPath ? imgPath.replace(/'/g, "\\'") : '';
 
   overlay.innerHTML = `
     <div class="scanned-product-card" style="position: relative; overflow: hidden; background: white; z-index: 1;">
@@ -1373,7 +1577,10 @@ function showScannedProductOverlay(product) {
       
       <!-- Contenido principal -->
       <div style="position: relative; z-index: 2; padding: 10px;">
-        <img src="${imgPath}" alt="Producto" style="max-width:120px; max-height:120px; object-fit:contain; margin-bottom:10px; border-radius: 8px; background: rgba(255,255,255,0.9); padding: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+        ${imgPath ? 
+          `<img src="${imgPath}" alt="Producto" style="max-width:120px; max-height:120px; object-fit:contain; margin-bottom:10px; border-radius: 8px; background: rgba(255,255,255,0.9); padding: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" onerror="this.style.display='none'">` : 
+          `<div style="width: 120px; height: 120px; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.9); border-radius: 8px; color: #ccc; font-size: 3rem;"><i class="fas fa-box"></i></div>`
+        }
         <div class="scanned-info">
           <h3 style="margin:0 0 5px; font-size:1.1rem; color:#222; font-weight: 700; text-shadow: 0 1px 1px rgba(255,255,255,0.8);">${escapeHtml(product.product_name)}</h3>
           <span class="price" style="font-size:1.4rem; font-weight:bold; color:var(--primary-color); text-shadow: 0 2px 0 rgba(255,255,255,1);">${formatCurrency(product.price)}</span>
@@ -2134,7 +2341,9 @@ window.posSystem = {
             product_name: product.product_name,
             unit_price: parseFloat(product.price),
             image_path: product.image_path,
-            stock_quantity: product.stock_quantity !== undefined ? parseInt(product.stock_quantity) : null
+            stock_quantity: product.stock_quantity !== undefined ? parseInt(product.stock_quantity) : null,
+            is_bulk: product.is_bulk || 0,
+            bulk_unit: product.bulk_unit || 'kg'
           });
         }
         return true;
@@ -2163,3 +2372,378 @@ window.posSystem = {
     showNotification('Carrito vaciado por voz', 'info');
   }
 };
+
+// =============================================
+// INTEGRACIÓN DE BALANZAS/PESAS
+// =============================================
+
+// Inicializar ScaleManager cuando la página cargue
+function initScaleManager() {
+  if (!window.ScaleManager) {
+    console.warn('ScaleManager no disponible');
+    return;
+  }
+
+  // Crear instancia global
+  window.scaleManager = new ScaleManager();
+
+  // Elementos del DOM
+  const toggleScaleBtn = document.getElementById('toggleScaleBtn');
+  const scaleStatusIndicator = document.getElementById('scaleStatusIndicator');
+  const scaleStatus = document.getElementById('scaleStatus');
+  const scaleWeight = document.getElementById('scaleWeight');
+  const scaleWeightValue = document.getElementById('scaleWeightValue');
+  const scaleWeightUnit = document.getElementById('scaleWeightUnit');
+
+  if (!toggleScaleBtn) return;
+
+  // Evento: Conectar balanza
+  toggleScaleBtn.addEventListener('click', async () => {
+    if (window.scaleManager.isConnected) {
+      await window.scaleManager.disconnect();
+    } else {
+      try {
+        if (!navigator.serial) {
+          showNotification('WebSerial API no soportada. Usa Chrome 89+ o Edge 89+', 'error');
+          return;
+        }
+        
+        // Mostrar selector de protocolo
+        const protocol = await showScaleProtocolDialog();
+        if (protocol) {
+          window.scaleManager.setProtocol(protocol);
+          await window.scaleManager.requestPort();
+        }
+      } catch (error) {
+        if (error.name !== 'NotFoundError') {
+          showNotification(`Error: ${error.message}`, 'error');
+        }
+      }
+    }
+  });
+
+  // Callback: Conexión exitosa
+  window.scaleManager.on('onConnect', (data) => {
+    toggleScaleBtn.classList.add('connected');
+    scaleStatusIndicator.classList.add('connected');
+    scaleStatus.textContent = 'Conectada';
+    showNotification('Balanza conectada', 'success');
+  });
+
+  // Callback: Desconexión
+  window.scaleManager.on('onDisconnect', (data) => {
+    toggleScaleBtn.classList.remove('connected');
+    scaleStatusIndicator.classList.remove('connected');
+    scaleStatus.textContent = 'Desconectada';
+    scaleWeight.style.display = 'none';
+    showNotification('Balanza desconectada', 'info');
+  });
+
+  // Callback: Peso recibido
+  window.scaleManager.on('onWeight', (data) => {
+    scaleWeightValue.textContent = data.weight.toFixed(3);
+    scaleWeightUnit.textContent = data.unit;
+    scaleWeight.style.display = 'inline';
+  });
+
+  // Callback: Error
+  window.scaleManager.on('onError', (data) => {
+    console.error('Scale error:', data);
+  });
+}
+
+// Mostrar diálogo para seleccionar protocolo
+async function showScaleProtocolDialog() {
+  return new Promise((resolve) => {
+    const html = `
+      <div id="protocolModal" class="modal-overlay active">
+        <div class="modal-content" style="max-width: 400px;">
+          <div class="modal-header">
+            <h3><i class="fas fa-balance-scale"></i> Seleccionar Protocolo</h3>
+          </div>
+          <div class="modal-body">
+            <p style="color: #666; margin-bottom: 15px;">
+              Selecciona el protocolo compatible con tu balanza:
+            </p>
+            <div class="form-group">
+              <label style="display: flex; align-items: center; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s;">
+                <input type="radio" name="protocol" value="generic" checked style="margin-right: 10px;">
+                <span>
+                  <strong>Genérico</strong><br>
+                  <small style="color: #999;">9600 baud, 8N1</small>
+                </span>
+              </label>
+              <label style="display: flex; align-items: center; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; cursor: pointer; margin-bottom: 10px; transition: all 0.2s;">
+                <input type="radio" name="protocol" value="datalogic" style="margin-right: 10px;">
+                <span>
+                  <strong>Datalogic</strong><br>
+                  <small style="color: #999;">9600 baud, 8O2</small>
+                </span>
+              </label>
+              <label style="display: flex; align-items: center; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                <input type="radio" name="protocol" value="excell" style="margin-right: 10px;">
+                <span>
+                  <strong>Excell</strong><br>
+                  <small style="color: #999;">1200 baud, 8N1</small>
+                </span>
+              </label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeProtocolModal()">Cancelar</button>
+            <button class="btn-primary" onclick="confirmProtocol()">Conectar</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    window._protocolModalResolve = resolve;
+    window.closeProtocolModal = () => {
+      document.getElementById('protocolModal')?.remove();
+      resolve(null);
+      window._protocolModalResolve = null;
+    };
+
+    window.confirmProtocol = () => {
+      const selected = document.querySelector('input[name="protocol"]:checked');
+      const protocol = selected?.value || 'generic';
+      document.getElementById('protocolModal')?.remove();
+      resolve(protocol);
+      window._protocolModalResolve = null;
+    };
+  });
+}
+
+// Cargar script de ScaleManager si no existe
+function loadScaleManagerScript() {
+  if (window.ScaleManager) {
+    initScaleManager();
+    return;
+  }
+
+  const script = document.createElement('script');
+  script.src = 'js/scale-manager.js';
+  script.onload = () => {
+    setTimeout(() => initScaleManager(), 100);
+  };
+  script.onerror = () => {
+    console.warn('No se pudo cargar scale-manager.js');
+  };
+  document.head.appendChild(script);
+}
+
+// Iniciar cuando el DOM esté listo
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', loadScaleManagerScript);
+} else {
+  loadScaleManagerScript();
+}
+
+// =============================================
+// PANTALLA DE CLIENTE (CUSTOMER DISPLAY)
+// =============================================
+
+let customerDisplayWindow = null;
+let customerDisplayChannel = null;
+
+// Inicializar sistema de pantalla de cliente
+function initCustomerDisplay() {
+  const toggleBtn = document.getElementById('toggleCustomerDisplayBtn');
+  if (!toggleBtn) return;
+
+  // Inicializar BroadcastChannel
+  try {
+    customerDisplayChannel = new BroadcastChannel('tomodachi_pos_sync');
+    
+    // Escuchar solicitudes de datos desde la pantalla
+    customerDisplayChannel.onmessage = (event) => {
+      if (event.data.type === 'request_data') {
+        sendCartToCustomerDisplay();
+      }
+    };
+  } catch (error) {
+    console.warn('BroadcastChannel no disponible, usando localStorage');
+  }
+
+  // Evento: Abrir/Cerrar pantalla de cliente
+  toggleBtn.addEventListener('click', () => {
+    if (customerDisplayWindow && !customerDisplayWindow.closed) {
+      // Cerrar ventana existente
+      customerDisplayWindow.close();
+      customerDisplayWindow = null;
+      toggleBtn.classList.remove('active');
+    } else {
+      // Abrir nueva ventana
+      openCustomerDisplay();
+    }
+  });
+
+  // Verificar si la ventana sigue abierta
+  setInterval(() => {
+    if (customerDisplayWindow && customerDisplayWindow.closed) {
+      customerDisplayWindow = null;
+      toggleBtn.classList.remove('active');
+    }
+  }, 1000);
+}
+
+// Abrir ventana de pantalla de cliente
+function openCustomerDisplay() {
+  const toggleBtn = document.getElementById('toggleCustomerDisplayBtn');
+  
+  // Configuración de ventana
+  const width = 1024;
+  const height = 768;
+  const left = window.screenX + window.outerWidth;
+  const top = window.screenY;
+
+  const features = `
+    width=${width},
+    height=${height},
+    left=${left},
+    top=${top},
+    toolbar=no,
+    menubar=no,
+    location=no,
+    status=no,
+    scrollbars=no,
+    resizable=yes
+  `.replace(/\s/g, '');
+
+  try {
+    customerDisplayWindow = window.open(
+      'customer-display.html',
+      'TomodachiCustomerDisplay',
+      features
+    );
+
+    if (customerDisplayWindow) {
+      toggleBtn.classList.add('active');
+      
+      // Enviar datos iniciales cuando cargue
+      customerDisplayWindow.addEventListener('load', () => {
+        setTimeout(() => sendCartToCustomerDisplay(), 500);
+      });
+
+      showNotification('Pantalla de cliente abierta', 'success');
+    } else {
+      showNotification('No se pudo abrir la ventana. Verifica los permisos del navegador.', 'error');
+    }
+  } catch (error) {
+    console.error('Error al abrir pantalla de cliente:', error);
+    showNotification('Error al abrir pantalla de cliente', 'error');
+  }
+}
+
+// Enviar datos del carrito a la pantalla de cliente
+function sendCartToCustomerDisplay() {
+  // Usar CART directamente ya que es el carrito activo
+  const cart = CART;
+  
+  // Calcular totales
+  const totals = calculateTotals();
+
+  // Obtener info de la tienda
+  const storeName = localStorage.getItem('tomodachi_store_name') || document.querySelector('.sidebar-header h2')?.textContent || 'Tomodachi';
+  
+  // Intentar obtener logo si existe (prioridad: elemento navStoreLogo, luego localStorage, luego default)
+  const navLogo = document.getElementById('navStoreLogo');
+  const storeLogo = (navLogo && navLogo.src && !navLogo.src.endsWith('default-logo.png')) 
+                    ? navLogo.src 
+                    : (localStorage.getItem('tomodachi_store_logo') || 'assets/images/default-logo.png');
+
+  const data = {
+    type: 'cart_update',
+    cart: cart,
+    totals: totals,
+    storeInfo: {
+        name: storeName,
+        logo: storeLogo
+    },
+    timestamp: Date.now()
+  };
+
+  // Enviar por BroadcastChannel
+  if (customerDisplayChannel) {
+    try {
+      customerDisplayChannel.postMessage(data);
+    } catch (error) {
+      console.error('Error enviando por BroadcastChannel:', error);
+    }
+  }
+
+  // Fallback: localStorage
+  try {
+    localStorage.setItem('tomodachi_customer_display', JSON.stringify(data));
+  } catch (error) {
+    console.error('Error guardando en localStorage:', error);
+  }
+}
+
+// Calcular totales del carrito
+function calculateTotals() {
+  const cart = CART; // Usar carrito activo
+  
+  let subtotal = 0;
+  cart.forEach(item => {
+    // Asegurar que los valores sean numéricos
+    const price = parseFloat(item.unit_price) || 0;
+    const qty = parseFloat(item.quantity) || 0;
+    const itemSubtotal = parseFloat(item.subtotal) || (price * qty);
+    
+    subtotal += itemSubtotal;
+  });
+
+  const discountValue = parseFloat(discountInput?.value) || 0;
+  const taxValue = parseFloat(taxInput?.value) || 0;
+
+  const total = subtotal - discountValue + taxValue;
+
+  return {
+    subtotal: subtotal,
+    discount: discountValue,
+    tax: taxValue,
+    total: Math.max(0, total)
+  };
+}
+
+// Hook para actualizar pantalla cuando cambia el carrito
+const originalRenderCart = renderCart;
+renderCart = function() {
+  originalRenderCart.apply(this, arguments);
+  
+  // Enviar actualización a pantalla de cliente
+  if (customerDisplayWindow && !customerDisplayWindow.closed) {
+    sendCartToCustomerDisplay();
+  }
+};
+
+// Hook para actualizar cuando cambian los totales
+const originalRecalcTotals = recalcTotals;
+recalcTotals = function() {
+  originalRecalcTotals.apply(this, arguments);
+  
+  // Enviar actualización a pantalla de cliente
+  if (customerDisplayWindow && !customerDisplayWindow.closed) {
+    sendCartToCustomerDisplay();
+  }
+};
+
+// Inicializar cuando el DOM esté listo
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initCustomerDisplay);
+} else {
+  initCustomerDisplay();
+}
+
+// Limpiar al cerrar página
+window.addEventListener('beforeunload', () => {
+  if (customerDisplayChannel) {
+    customerDisplayChannel.close();
+  }
+  if (customerDisplayWindow && !customerDisplayWindow.closed) {
+    customerDisplayWindow.close();
+  }
+});

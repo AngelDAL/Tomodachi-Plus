@@ -146,13 +146,20 @@
                 <div class="nav-group profile-nav-group">
                     <a href="profile.html" class="nav-item" id="profileMenuBtn">
                         <span class="profile-icon-container">
-                            <img src="assets/images/default-logo.png" alt="Store" class="nav-profile-img" id="navStoreLogo">
+                            <img src="assets/images/default-logo.png" alt="Store" class="nav-profile-img" id="navStoreLogo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block'">
+                            <i class="fas fa-circle-user" style="display:none; font-size: 1.5rem;"></i>
                         </span>
                         <span class="nav-text">Mi Perfil</span>
                     </a>
                 </div>
                 <a href="#" class="nav-item" id="logoutBtn">
                     <span><i class="fas fa-sign-out-alt"></i></span> Cerrar Sesión
+                </a>
+                
+                <div class="nav-separator" style="margin: 10px 0; border-top: 1px solid rgba(255,255,255,0.1);"></div>
+                
+                <a href="#" class="nav-item desktop-only-nav js-support-btn" id="supportBtn" style="color: #aaa; font-size: 0.9em;">
+                    <span><i class="fas fa-headset"></i></span> Soporte / Sugerencias
                 </a>
             </nav>
         </aside>

@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/sales.css">
     <link rel="stylesheet" href="css/scanner_overlay.css">
+    <link rel="stylesheet" href="css/bulk_sales.css">
     <script src="js/theme-init.js"></script>
 </head>
 
@@ -93,7 +94,18 @@
                             aria-label="Buscar producto" class="search-main">
                         <button id="toggleScannerBtn" type="button" class="btn-scanner" aria-label="Escáner"
                             title="Activar escáner"><i class="fas fa-barcode"></i></button>
+                        <button id="toggleScaleBtn" type="button" class="btn-scale" aria-label="Conectar balanza"
+                            title="Conectar balanza"><i class="fas fa-weight-hanging"></i></button>
+                        <button id="toggleCustomerDisplayBtn" type="button" class="btn-customer-display" aria-label="Pantalla de Cliente"
+                            title="Abrir Pantalla de Cliente"><i class="fas fa-tv"></i></button>
                         <!-- Voice control removed per request -->
+                    </div>
+
+                    <!-- Scale Status Indicator -->
+                    <div id="scaleStatusIndicator" class="scale-status-indicator">
+                        <i class="fas fa-balance-scale"></i>
+                        <span id="scaleStatus">Desconectado</span>
+                        <span id="scaleWeight" style="display: none;">(<span id="scaleWeightValue">--.--</span> <span id="scaleWeightUnit">kg</span>)</span>
                     </div>
 
                     <!-- Checkout Header (Movido desde abajo) -->

@@ -1,0 +1,180 @@
+/* Estilos para Modal de Cantidad a Granel */
+#bulkQuantityModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+#bulkQuantityModal.active {
+    display: flex !important;
+}
+
+#bulkQuantityModal .modal-content {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    max-width: 400px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+#bulkQuantityModal .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+#bulkQuantityModal .modal-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #333;
+    flex: 1;
+}
+
+#bulkQuantityModal .modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #999;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+#bulkQuantityModal .modal-close:hover {
+    color: #333;
+    transform: scale(1.1);
+}
+
+#bulkQuantityModal .modal-body {
+    padding: 20px;
+}
+
+#bulkQuantityModal .form-group {
+    margin-bottom: 15px;
+}
+
+#bulkQuantityModal .form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #333;
+    font-size: 0.95rem;
+}
+
+#bulkQuantityModal .form-group input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+
+#bulkQuantityModal .form-group input:focus {
+    outline: none;
+    border-color: var(--primary-color, #2e7d32);
+    box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+}
+
+#bulkQuantityModal #bulkTotalPreview {
+    background: #f5f5f5;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    margin-top: 15px;
+    border-left: 4px solid var(--primary-color, #2e7d32);
+}
+
+#bulkQuantityModal #bulkTotalPreview strong {
+    color: var(--primary-color, #2e7d32);
+    font-size: 1.1rem;
+}
+
+#bulkQuantityModal .modal-footer {
+    display: flex;
+    gap: 10px;
+    padding: 16px;
+    border-top: 1px solid #e0e0e0;
+    justify-content: flex-end;
+}
+
+#bulkQuantityModal .btn-cancel,
+#bulkQuantityModal .btn-primary {
+    padding: 10px 16px;
+    border-radius: 6px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.95rem;
+}
+
+#bulkQuantityModal .btn-cancel {
+    background: #e0e0e0;
+    color: #333;
+}
+
+#bulkQuantityModal .btn-cancel:hover {
+    background: #d0d0d0;
+}
+
+#bulkQuantityModal .btn-primary {
+    background: var(--primary-color, #2e7d32);
+    color: white;
+}
+
+#bulkQuantityModal .btn-primary:hover {
+    background: var(--primary-dark, #1b5e20);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+}
+
+#bulkQuantityModal .btn-primary:active {
+    transform: translateY(0);
+}
+
+/* Responsivo */
+@media (max-width: 480px) {
+    #bulkQuantityModal .modal-content {
+        max-width: 100%;
+    }
+
+    #bulkQuantityModal .modal-footer {
+        flex-direction: column-reverse;
+    }
+
+    #bulkQuantityModal .btn-cancel,
+    #bulkQuantityModal .btn-primary {
+        width: 100%;
+    }
+}

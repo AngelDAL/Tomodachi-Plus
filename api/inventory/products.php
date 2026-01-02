@@ -42,7 +42,7 @@ try {
             $search = isset($_GET['search']) ? trim($_GET['search']) : '';
             $params=[];
             // Removed JOIN with inventory, selecting current_stock directly from products
-            $sql = 'SELECT p.product_id, p.product_name, p.description, p.image_path, p.barcode, p.qr_code, p.price, p.cost, p.min_stock, p.status, p.category_id, c.category_name, p.current_stock';
+            $sql = 'SELECT p.product_id, p.product_name, p.description, p.image_path, p.barcode, p.qr_code, p.price, p.cost, p.min_stock, p.status, p.category_id, c.category_name, p.current_stock, p.is_bulk, p.bulk_unit';
             $sql .= ' FROM products p LEFT JOIN categories c ON p.category_id = c.category_id';
             
             $conditions=[];
@@ -86,6 +86,8 @@ try {
             $min_stock=isset($data['min_stock'])?(int)$data['min_stock']:0;
             $initial_stock=isset($data['stock'])?(int)$data['stock']:0; // Capturar stock inicial
             $description=isset($data['description'])?Validator::sanitizeString($data['description']):'';
+            $is_bulk=isset($data['is_bulk'])?(int)$data['is_bulk']:0;
+            $bulk_unit=isset($data['bulk_unit'])?Validator::sanitizeString($data['bulk_unit']):'kg';
             
             if(!Validator::required($product_name)){$errors['product_name']='Requerido';}
             
@@ -110,8 +112,8 @@ try {
             if(!Validator::validatePrice($cost)){$errors['cost']='Costo inválido';}
             if($errors){ Response::validationError($errors); }
             
-            $id=$db->insert('INSERT INTO products (store_id, category_id, product_name, description, barcode, qr_code, price, cost, current_stock, min_stock, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())',[
-                $store_id, $category_id,$product_name,$description,$barcode,$qr_code,$price,$cost,$initial_stock,$min_stock,STATUS_ACTIVE
+            $id=$db->insert('INSERT INTO products (store_id, category_id, product_name, description, barcode, qr_code, price, cost, current_stock, min_stock, status, is_bulk, bulk_unit, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())',[
+                $store_id, $category_id,$product_name,$description,$barcode,$qr_code,$price,$cost,$initial_stock,$min_stock,STATUS_ACTIVE,$is_bulk,$bulk_unit
             ]);
             
             // Registrar movimiento inicial si el stock > 0
@@ -121,7 +123,7 @@ try {
                     [$store_id, $id, $user_id, $initial_stock, $initial_stock]);
             }
 
-            $product=$db->selectOne('SELECT product_id, product_name, image_path, barcode, qr_code, price, cost, current_stock, min_stock, status FROM products WHERE product_id = ?',[$id]);
+            $product=$db->selectOne('SELECT product_id, product_name, image_path, barcode, qr_code, price, cost, current_stock, min_stock, status, is_bulk, bulk_unit FROM products WHERE product_id = ?',[$id]);
             Response::success($product,'Producto creado');
             break;
         case 'PUT':
@@ -169,6 +171,8 @@ try {
             if(isset($data['min_stock'])){ $fields[]='min_stock = ?'; $params[]=(int)$data['min_stock']; }
             if(isset($data['status'])){ if(!in_array($data['status'],[STATUS_ACTIVE,STATUS_INACTIVE])){ Response::validationError(['status'=>'Inválido']); } $fields[]='status = ?'; $params[]=$data['status']; }
             if(isset($data['category_id'])){ $cid=(int)$data['category_id']; if($cid && !$db->selectOne('SELECT category_id FROM categories WHERE category_id = ?',[$cid])){ Response::validationError(['category_id'=>'No existe']); } $fields[]='category_id = ?'; $params[]=$cid; }
+            if(isset($data['is_bulk'])){ $fields[]='is_bulk = ?'; $params[]=(int)$data['is_bulk']; }
+            if(isset($data['bulk_unit'])){ $fields[]='bulk_unit = ?'; $params[]=Validator::sanitizeString($data['bulk_unit']); }
             
             if(!$fields){ Response::error('Nada para actualizar',400); }
             $fields[]='updated_at = NOW()';
@@ -179,7 +183,7 @@ try {
             $params[]=$store_id;
             
             $db->update($sql,$params);
-            $product=$db->selectOne('SELECT product_id, product_name, image_path, barcode, qr_code, price, cost, current_stock, min_stock, status FROM products WHERE product_id = ?',[$product_id]);
+            $product=$db->selectOne('SELECT product_id, product_name, image_path, barcode, qr_code, price, cost, current_stock, min_stock, status, is_bulk, bulk_unit FROM products WHERE product_id = ?',[$product_id]);
             Response::success($product,'Producto actualizado');
             break;
         default:

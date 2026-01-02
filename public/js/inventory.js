@@ -321,6 +321,15 @@ function bindEvents() {
 
     // Listener de imagen eliminado (ya manejado arriba)
 
+    // Toggle de venta a granel
+    const isBulkCheckbox = document.getElementById('editProductIsBulk');
+    const bulkUnitGroup = document.getElementById('bulkUnitGroup');
+    if (isBulkCheckbox && bulkUnitGroup) {
+        isBulkCheckbox.addEventListener('change', function() {
+            bulkUnitGroup.style.display = this.checked ? 'block' : 'none';
+        });
+    }
+
     // Recalcular ganancia en tiempo real
     if (editCostInput && editPriceInput) {
         const updateProfit = () => {
@@ -639,8 +648,9 @@ function renderProducts(items) {
     }
 
     container.innerHTML = items.map(product => {
-        const imgHtml = product.image_path
-            ? `<img src="/${product.image_path}" alt="${product.product_name}" onerror="this.parentElement.innerHTML='<span class=&quot;no-image&quot;><i class=&quot;fas fa-image&quot;></i></span>'">`
+        const imagePath = getRelativeImagePath(product.image_path);
+        const imgHtml = imagePath
+            ? `<img src="${imagePath}" alt="${product.product_name}" onerror="this.parentElement.innerHTML='<span class=&quot;no-image&quot;><i class=&quot;fas fa-image&quot;></i></span>'">`
             : '<span class="no-image"><i class="fas fa-image"></i></span>';
 
         const stockClass = (product.current_stock <= product.min_stock) ? 'stock-low' : 'stock-ok';
@@ -683,11 +693,27 @@ function openProductDetails(productId) {
     document.getElementById('editProductPrice').value = product.price;
     document.getElementById('editProductStock').value = product.current_stock || 0;
     document.getElementById('editProductMinStock').value = product.min_stock || 0;
+    
+    // Campos de venta a granel
+    const isBulkCheckbox = document.getElementById('editProductIsBulk');
+    const bulkUnitSelect = document.getElementById('editProductBulkUnit');
+    const bulkUnitGroup = document.getElementById('bulkUnitGroup');
+    
+    if (isBulkCheckbox) {
+        isBulkCheckbox.checked = product.is_bulk == 1;
+        if (bulkUnitGroup) {
+            bulkUnitGroup.style.display = product.is_bulk == 1 ? 'block' : 'none';
+        }
+    }
+    if (bulkUnitSelect) {
+        bulkUnitSelect.value = product.bulk_unit || 'kg';
+    }
 
     // Imagen
     const img = document.getElementById('detailImage');
-    if (product.image_path) {
-        img.src = '/' + product.image_path;
+    const imagePath = getRelativeImagePath(product.image_path);
+    if (imagePath) {
+        img.src = imagePath;
         img.style.display = 'block';
     } else {
         img.src = ''; // O una imagen placeholder
@@ -746,7 +772,9 @@ async function submitEditProduct() {
         qr_code: formData.get('qr_code'),
         price: parseFloat(formData.get('price')),
         cost: parseFloat(formData.get('cost')),
-        min_stock: parseInt(formData.get('min_stock'))
+        min_stock: parseInt(formData.get('min_stock')),
+        is_bulk: document.getElementById('editProductIsBulk')?.checked ? 1 : 0,
+        bulk_unit: formData.get('bulk_unit') || 'kg'
     };
 
     try {

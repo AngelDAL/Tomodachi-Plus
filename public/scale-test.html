@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Herramienta de Prueba de Balanzas - Tomodachi</title>
+    <link rel="stylesheet" href="lib/fontawesome/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h2 i {
+            color: #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-top: 10px;
+        }
+
+        .status-disconnected {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .status-connected {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-disconnected .status-dot {
+            background: #dc2626;
+            animation: pulse-off 2s infinite;
+        }
+
+        .status-connected .status-dot {
+            background: #16a34a;
+            animation: pulse-on 1s infinite;
+        }
+
+        @keyframes pulse-on {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes pulse-off {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .weight-display {
+            background: #f9fafb;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .weight-value {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #667eea;
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+
+        .weight-unit {
+            font-size: 1.2rem;
+            color: #666;
+        }
+
+        .log {
+            background: #1f2937;
+            color: #10b981;
+            border-radius: 6px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #374151;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: #6b7280;
+            margin-right: 10px;
+        }
+
+        .log-error {
+            color: #ef4444;
+        }
+
+        .log-success {
+            color: #10b981;
+        }
+
+        .log-info {
+            color: #60a5fa;
+        }
+
+        .simulator-section {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+
+        .simulator-section h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+        }
+
+        .info-box {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 12px;
+            border-radius: 4px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #1e40af;
+        }
+
+        .browser-support {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 12px;
+            border-radius: 4px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #92400e;
+        }
+
+        .browser-support.supported {
+            background: #dcfce7;
+            border-left-color: #16a34a;
+            color: #166534;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1><i class="fas fa-weight-hanging"></i> Herramienta de Prueba de Balanzas</h1>
+            <p>Conecta y prueba tus balanzas/pesas via WebSerial API</p>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Connection Card -->
+            <div class="card">
+                <h2><i class="fas fa-plug"></i> Conexión</h2>
+
+                <div class="form-group">
+                    <label for="protocol">Protocolo de Balanza:</label>
+                    <select id="protocol">
+                        <option value="generic">Genérico (9600, 8N1)</option>
+                        <option value="datalogic">Datalogic (9600, 8O2)</option>
+                        <option value="excell">Excell (1200, 8N1)</option>
+                    </select>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-primary" id="connectBtn">
+                        <i class="fas fa-link"></i> Conectar
+                    </button>
+                    <button class="btn-danger" id="disconnectBtn" disabled>
+                        <i class="fas fa-unlink"></i> Desconectar
+                    </button>
+                </div>
+
+                <div id="statusDiv" class="status-indicator status-disconnected">
+                    <span class="status-dot"></span>
+                    <span>Desconectado</span>
+                </div>
+
+                <div class="browser-support" id="browserSupport">
+                    <i class="fas fa-exclamation-circle"></i> WebSerial API no soportada
+                </div>
+
+                <div class="weight-display">
+                    <div class="weight-value" id="weightValue">--.--</div>
+                    <div class="weight-unit" id="weightUnit">kg</div>
+                </div>
+            </div>
+
+            <!-- Simulator Card -->
+            <div class="card">
+                <h2><i class="fas fa-flask"></i> Simulador</h2>
+
+                <p style="color: #666; margin-bottom: 15px; font-size: 0.9rem;">
+                    Simula datos de balanza para pruebas sin hardware real
+                </p>
+
+                <div class="simulator-section">
+                    <h3>Enviar Peso Simulado</h3>
+                    
+                    <div class="form-group">
+                        <label for="simulateWeight">Peso (kg):</label>
+                        <input type="number" id="simulateWeight" placeholder="1234.56" step="0.01" value="1234.56">
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn-secondary" id="simulateBtn">
+                            <i class="fas fa-play"></i> Simular
+                        </button>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <i class="fas fa-info-circle"></i> 
+                    <strong>Nota:</strong> El simulador solo funciona si estás conectado a través de WebSerial.
+                    Presiona "Simular" para enviar datos como si fueran desde la balanza.
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Card -->
+        <div class="card">
+            <h2><i class="fas fa-history"></i> Registro de Eventos</h2>
+            
+            <div class="button-group">
+                <button class="btn-secondary" id="clearLogBtn">
+                    <i class="fas fa-trash"></i> Limpiar
+                </button>
+                <button class="btn-secondary" id="exportLogBtn">
+                    <i class="fas fa-download"></i> Descargar
+                </button>
+            </div>
+
+            <div class="log" id="log">
+                <div class="log-entry log-info">
+                    <span class="log-time">[00:00:00]</span>
+                    Sistema de prueba iniciado
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Card -->
+        <div class="card" style="margin-top: 20px;">
+            <h2><i class="fas fa-question-circle"></i> Ayuda</h2>
+
+            <h3 style="color: #333; margin: 15px 0 10px;">Cómo usar:</h3>
+            <ol style="color: #666; line-height: 1.8; margin-left: 20px;">
+                <li>Selecciona el protocolo compatible con tu balanza</li>
+                <li>Haz clic en "Conectar" y selecciona el puerto COM de tu balanza</li>
+                <li>Si está conectada, deberías ver los pesos en tiempo real</li>
+                <li>Usa el simulador para pruebas sin hardware real</li>
+            </ol>
+
+            <h3 style="color: #333; margin: 15px 0 10px;">Protocolos soportados:</h3>
+            <ul style="color: #666; line-height: 1.8; margin-left: 20px;">
+                <li><strong>Genérico:</strong> Formato simple "1234.56" (9600 baud)</li>
+                <li><strong>Datalogic:</strong> Formato "ST,GS,1234.56,g" (9600 baud)</li>
+                <li><strong>Excell:</strong> Formato "+1234.56g" (1200 baud)</li>
+            </ul>
+
+            <h3 style="color: #333; margin: 15px 0 10px;">Navegadores soportados:</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 10px;">
+                <div style="padding: 10px; background: #f3f4f6; border-radius: 6px; text-align: center;">
+                    <i class="fab fa-chrome" style="color: #ea4335; margin-right: 5px;"></i>
+                    Chrome 89+
+                </div>
+                <div style="padding: 10px; background: #f3f4f6; border-radius: 6px; text-align: center;">
+                    <i class="fab fa-edge" style="color: #0078d4; margin-right: 5px;"></i>
+                    Edge 89+
+                </div>
+                <div style="padding: 10px; background: #f3f4f6; border-radius: 6px; text-align: center;">
+                    <i class="fab fa-opera" style="color: #ff1b2d; margin-right: 5px;"></i>
+                    Opera 75+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/scale-manager.js"></script>
+    <script>
+        // Inicializar ScaleManager
+        const scaleManager = new ScaleManager();
+        const log = [];
+
+        // Elementos DOM
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const protocolSelect = document.getElementById('protocol');
+        const statusDiv = document.getElementById('statusDiv');
+        const weightValue = document.getElementById('weightValue');
+        const weightUnit = document.getElementById('weightUnit');
+        const logDiv = document.getElementById('log');
+        const clearLogBtn = document.getElementById('clearLogBtn');
+        const exportLogBtn = document.getElementById('exportLogBtn');
+        const simulateBtn = document.getElementById('simulateBtn');
+        const simulateWeightInput = document.getElementById('simulateWeight');
+        const browserSupport = document.getElementById('browserSupport');
+
+        // Verificar soporte del navegador
+        function checkBrowserSupport() {
+            if (navigator.serial) {
+                browserSupport.classList.add('supported');
+                browserSupport.innerHTML = '<i class="fas fa-check-circle"></i> WebSerial API disponible';
+            }
+        }
+
+        // Agregar log
+        function addLog(message, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            const entry = { time, message, type };
+            log.push(entry);
+
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.innerHTML = `<span class="log-time">[${time}]</span>${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // Actualizar estado
+        function updateStatus() {
+            if (scaleManager.isConnected) {
+                statusDiv.className = 'status-indicator status-connected';
+                statusDiv.innerHTML = '<span class="status-dot"></span><span>Conectado</span>';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                protocolSelect.disabled = true;
+            } else {
+                statusDiv.className = 'status-indicator status-disconnected';
+                statusDiv.innerHTML = '<span class="status-dot"></span><span>Desconectado</span>';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                protocolSelect.disabled = false;
+                weightValue.textContent = '--.--';
+            }
+        }
+
+        // Eventos
+        connectBtn.addEventListener('click', async () => {
+            try {
+                const protocol = protocolSelect.value;
+                scaleManager.setProtocol(protocol);
+                addLog(`Iniciando conexión con protocolo: ${protocol}...`, 'info');
+
+                const success = await scaleManager.requestPort();
+                if (success) {
+                    addLog('✓ Puerto conectado exitosamente', 'success');
+                    updateStatus();
+                }
+            } catch (error) {
+                addLog(`✗ Error: ${error.message}`, 'error');
+            }
+        });
+
+        disconnectBtn.addEventListener('click', async () => {
+            await scaleManager.disconnect();
+            addLog('Desconectado', 'info');
+            updateStatus();
+        });
+
+        simulateBtn.addEventListener('click', () => {
+            if (!scaleManager.isConnected) {
+                addLog('✗ Debes estar conectado para simular', 'error');
+                return;
+            }
+
+            const weight = parseFloat(simulateWeightInput.value);
+            if (isNaN(weight)) {
+                addLog('✗ Peso inválido', 'error');
+                return;
+            }
+
+            addLog(`📊 Simulando peso: ${weight.toFixed(3)}...`, 'info');
+            scaleManager.simulateWeight(weight, 'kg');
+        });
+
+        clearLogBtn.addEventListener('click', () => {
+            log.length = 0;
+            logDiv.innerHTML = '';
+            addLog('Registro limpiado', 'info');
+        });
+
+        exportLogBtn.addEventListener('click', () => {
+            const content = log
+                .map(e => `[${e.time}] ${e.message}`)
+                .join('\n');
+
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `balanza-log-${new Date().toISOString().slice(0, 10)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // Callbacks de ScaleManager
+        scaleManager.on('onConnect', (data) => {
+            addLog('✓ Conectado correctamente', 'success');
+            updateStatus();
+        });
+
+        scaleManager.on('onDisconnect', (data) => {
+            addLog('Desconectado', 'info');
+            updateStatus();
+        });
+
+        scaleManager.on('onWeight', (data) => {
+            weightValue.textContent = data.weight.toFixed(2);
+            weightUnit.textContent = data.unit;
+            addLog(`Peso: ${data.weight.toFixed(2)} ${data.unit} (${data.raw})`, 'success');
+        });
+
+        scaleManager.on('onError', (data) => {
+            addLog(`✗ Error: ${data.message}`, 'error');
+        });
+
+        // Inicializar
+        checkBrowserSupport();
+        updateStatus();
+    </script>
+</body>
+</html>

@@ -105,7 +105,8 @@ try {
     $productsToUpdate = [];
     foreach ($items as $idx=>$it) {
         $pid = isset($it['product_id']) ? (int)$it['product_id'] : 0;
-        $qty = isset($it['quantity']) ? (int)$it['quantity'] : 0;
+        // Permitir decimales para venta a granel
+        $qty = isset($it['quantity']) ? (float)$it['quantity'] : 0;
         // SEGURIDAD: Ignoramos el precio enviado por el frontend y usamos el de la BD
         // $price = isset($it['price']) ? (float)$it['price'] : 0.0; 
         
@@ -117,7 +118,7 @@ try {
         if (!$prod) { Response::error('Producto inactivo o inexistente ID '.$pid,404); }
         
         $price = (float)$prod['price']; // Precio blindado
-        $stockActual = (int)$prod['current_stock'];
+        $stockActual = (float)$prod['current_stock'];
         
         // Validar stock solo si NO se permite stock negativo
         if (!$allowNegativeStock && $stockActual < $qty) { 

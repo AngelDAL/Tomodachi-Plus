@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pantalla de Cliente - Tomodachi</title>
+    <link rel="stylesheet" href="lib/fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="css/fonts.css">
+    <script src="js/theme-init.js"></script>
+    <style>
+        :root {
+            /* Default Theme (Mexican Pink) matching variables.css */
+            --primary-color: #E3057A;
+            --secondary-color: #4a4a4a;
+            --bg-body: #f4f7f6;
+            --text-color: #333333;
+            --success-color: #4CAF50;
+            --danger-color: #f44336;
+            --white: #ffffff;
+            --dark-color: #333333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Google Sans Flex', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-body);
+            color: var(--text-color);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: var(--dark-color);
+            padding: 15px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            color: var(--white);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-img {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            object-fit: contain;
+            background: white;
+            padding: 2px;
+        }
+
+        .store-name {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--white);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .welcome-msg {
+            font-size: 1.2rem;
+            color: rgba(255,255,255,0.9);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            gap: 20px;
+            padding: 20px 40px;
+            overflow: hidden;
+        }
+
+        /* Products List */
+        .products-section {
+            flex: 1;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-top: 4px solid var(--primary-color);
+        }
+
+        .section-title {
+            color: var(--text-color);
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-title i {
+            color: var(--primary-color);
+        }
+
+        .products-list {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .products-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .products-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .products-list::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 10px;
+        }
+
+        .product-item {
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            padding: 15px 10px;
+            display: grid;
+            grid-template-columns: auto auto 1fr auto;
+            gap: 20px;
+            align-items: center;
+            transition: all 0.3s;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .product-item:last-child {
+            border-bottom: none;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .product-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #f8f9fa;
+            border: 1px solid #eee;
+        }
+
+        .product-image-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            border: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ccc;
+            font-size: 1.8rem;
+        }
+
+        .product-quantity {
+            background: var(--primary-color);
+            color: white;
+            min-width: 40px;
+            height: 40px;
+            padding: 0 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: 700;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .product-info {
+            flex: 1;
+        }
+
+        .product-name {
+            color: var(--text-color);
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .product-unit-price {
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .price-original {
+            text-decoration: line-through;
+            color: #999;
+            margin-right: 8px;
+            font-size: 0.9rem;
+        }
+
+        .price-promo {
+            color: var(--danger-color);
+            font-weight: 700;
+        }
+
+        .product-total {
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-align: right;
+        }
+
+        .empty-cart {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #ccc;
+            text-align: center;
+            height: 100%;
+        }
+
+        .empty-cart i {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+            color: var(--primary-color);
+        }
+
+        .empty-cart-text {
+            font-size: 1.2rem;
+            color: var(--text-color);
+        }
+
+        /* Summary Section */
+        .summary-section {
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .summary-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border-top: 4px solid var(--secondary-color);
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+            color: #555;
+        }
+
+        .summary-row:last-child {
+            border-bottom: none;
+        }
+
+        .summary-label {
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-color);
+        }
+
+        .summary-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .total-row {
+            background: var(--primary-color);
+            margin: -25px;
+            margin-top: 15px;
+            padding: 25px;
+            border-radius: 0 0 15px 15px;
+            color: white;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
+        }
+
+        .total-row .summary-label {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .total-row .summary-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Info Card */
+        .info-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            color: #666;
+        }
+
+        .info-card i {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            color: var(--primary-color);
+        }
+
+        /* Responsive */
+        @media (max-width: 1000px) {
+            .main-content {
+                flex-direction: column;
+            }
+
+            .summary-section {
+                width: 100%;
+                flex-direction: row;
+            }
+            
+            .summary-card {
+                flex: 2;
+            }
+            
+            .info-card {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">
+            <img src="assets/images/default-logo.png" alt="Logo" class="logo-img" id="storeLogo" onerror="this.src='assets/images/default-logo.png'">
+            <div class="store-name" id="storeName">Tomodachi</div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Products Section -->
+        <div class="products-section">
+            <div class="section-title">
+                <i class="fas fa-list"></i>
+                <span>Artículos</span>
+            </div>
+            <div class="products-list" id="productsList">
+                <!-- Empty State -->
+                <div class="empty-cart" id="emptyCart">
+                    <i class="fas fa-shopping-basket"></i>
+                    <div class="empty-cart-text">Tu carrito está vacío</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Section -->
+        <div class="summary-section">
+            <!-- Summary Card -->
+            <div class="summary-card">
+                <div class="summary-row">
+                    <div class="summary-label">
+                        Artículos
+                    </div>
+                    <div class="summary-value" id="itemCount">0</div>
+                </div>
+                <div class="summary-row">
+                    <div class="summary-label">
+                        Subtotal
+                    </div>
+                    <div class="summary-value" id="subtotal">$0.00</div>
+                </div>
+                <div class="summary-row" id="discountRow" style="display: none;">
+                    <div class="summary-label">
+                        Descuento
+                    </div>
+                    <div class="summary-value" id="discount" style="color: var(--success-color);">$0.00</div>
+                </div>
+                <div class="summary-row total-row">
+                    <div class="summary-label">
+                        TOTAL
+                    </div>
+                    <div class="summary-value" id="total">$0.00</div>
+                </div>
+            </div>
+
+            <!-- Info Card -->
+            <div class="info-card">
+                <i class="fas fa-heart"></i>
+                <div class="info-text">¡Gracias por tu compra!</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración
+        const CHANNEL_NAME = 'tomodachi_pos_sync';
+        let broadcastChannel = null;
+        let lastUpdate = Date.now();
+
+        // Elementos del DOM
+        const productsList = document.getElementById('productsList');
+        const emptyCart = document.getElementById('emptyCart');
+        const itemCount = document.getElementById('itemCount');
+        const subtotal = document.getElementById('subtotal');
+        const discount = document.getElementById('discount');
+        const discountRow = document.getElementById('discountRow');
+        const total = document.getElementById('total');
+
+        // Inicializar BroadcastChannel
+        function initBroadcastChannel() {
+            try {
+                broadcastChannel = new BroadcastChannel(CHANNEL_NAME);
+                
+                broadcastChannel.onmessage = (event) => {
+                    lastUpdate = Date.now();
+                    if (event.data.type === 'cart_update') {
+                        updateDisplay(event.data.cart, event.data.totals, event.data.storeInfo);
+                    }
+                };
+
+                // Solicitar datos iniciales
+                setTimeout(() => {
+                    broadcastChannel.postMessage({ type: 'request_data' });
+                }, 500);
+
+            } catch (error) {
+                console.error('Error al inicializar BroadcastChannel:', error);
+                // Fallback a localStorage
+                initLocalStorageFallback();
+            }
+        }
+
+        // Fallback usando localStorage
+        function initLocalStorageFallback() {
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'tomodachi_customer_display') {
+                    const data = JSON.parse(e.newValue || '{}');
+                    updateDisplay(data.cart, data.totals, data.storeInfo);
+                    lastUpdate = Date.now();
+                }
+            });
+
+            // Cargar datos iniciales
+            const stored = localStorage.getItem('tomodachi_customer_display');
+            if (stored) {
+                const data = JSON.parse(stored);
+                updateDisplay(data.cart, data.totals, data.storeInfo);
+            }
+        }
+
+        // Actualizar display con datos del carrito
+        function updateDisplay(cart, totals, storeInfo) {
+            // Actualizar info de tienda si viene en los datos
+            if (storeInfo) {
+                if (storeInfo.name) document.getElementById('storeName').textContent = storeInfo.name;
+                if (storeInfo.logo) document.getElementById('storeLogo').src = storeInfo.logo;
+            }
+
+            if (!cart || cart.length === 0) {
+                productsList.innerHTML = `
+                    <div class="empty-cart">
+                        <i class="fas fa-shopping-basket"></i>
+                        <div class="empty-cart-text">Tu carrito está vacío</div>
+                    </div>
+                `;
+                itemCount.textContent = '0';
+                subtotal.textContent = '$0.00';
+                discount.textContent = '$0.00';
+                discountRow.style.display = 'none';
+                total.textContent = '$0.00';
+                return;
+            }
+
+            // Renderizar productos
+            const html = cart.map(item => {
+                const hasPromo = item.unit_price < item.original_price;
+                const imagePath = getRelativeImagePath(item.image_path);
+                
+                const imgHtml = imagePath 
+                    ? `<img src="${imagePath}" alt="" class="product-image" onerror="this.outerHTML='<div class=\\'product-image-icon\\'><i class=\\'fas fa-shopping-basket\\'></i></div>'">`
+                    : `<div class="product-image-icon"><i class="fas fa-shopping-basket"></i></div>`;
+                
+                return `
+                <div class="product-item">
+                    ${imgHtml}
+                    <div class="product-quantity">${formatQuantity(item.quantity)}</div>
+                    <div class="product-info">
+                        <div class="product-name">${escapeHtml(item.product_name)}</div>
+                        <div class="product-unit-price">
+                            ${hasPromo 
+                                ? `<span class="price-original">${formatCurrency(item.original_price)}</span>
+                                   <span class="price-promo">${formatCurrency(item.unit_price)}</span>`
+                                : formatCurrency(item.unit_price)
+                            }
+                            ${item.is_bulk ? `/ ${item.bulk_unit || 'kg'}` : 'c/u'}
+                        </div>
+                    </div>
+                    <div class="product-total">${formatCurrency(item.subtotal || (item.quantity * item.unit_price))}</div>
+                </div>
+            `}).join('');
+
+            productsList.innerHTML = html;
+
+            // Actualizar totales
+            if (totals) {
+                itemCount.textContent = cart.length;
+                subtotal.textContent = formatCurrency(totals.subtotal || 0);
+                
+                if (totals.discount > 0) {
+                    discount.textContent = '-' + formatCurrency(totals.discount);
+                    discountRow.style.display = 'flex';
+                } else {
+                    discountRow.style.display = 'none';
+                }
+                
+                total.textContent = formatCurrency(totals.total || 0);
+            }
+        }
+
+        // Formatear moneda
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('es-MX', {
+                style: 'currency',
+                currency: 'MXN'
+            }).format(amount);
+        }
+
+        // Formatear cantidad
+        function formatQuantity(qty) {
+            const num = parseFloat(qty);
+            return Number.isInteger(num) ? num : num.toFixed(3);
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Obtener ruta relativa de imagen
+        function getRelativeImagePath(path) {
+            if (!path) return null;
+            // Si es base64, retornar tal cual
+            if (path.startsWith('data:image')) return path;
+            // Si es http/https, retornar tal cual
+            if (path.startsWith('http')) return path;
+            
+            // Normalizar slashes
+            let cleanPath = path.replace(/\\/g, '/');
+            
+            // Si contiene 'public/', tomar lo que sigue
+            if (cleanPath.includes('public/')) {
+                cleanPath = cleanPath.split('public/')[1];
+            }
+            
+            // Eliminar slash inicial si existe para hacerlo relativo
+            if (cleanPath.startsWith('/')) {
+                cleanPath = cleanPath.substring(1);
+            }
+            
+            return cleanPath;
+        }
+
+        // Cargar logo de la tienda
+        function loadStoreLogo() {
+            const stored = localStorage.getItem('tomodachi_store_logo');
+            if (stored) {
+                document.getElementById('storeLogo').src = stored;
+            }
+
+            const storeName = localStorage.getItem('tomodachi_store_name');
+            if (storeName) {
+                document.getElementById('storeName').textContent = storeName;
+            }
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', () => {
+            initBroadcastChannel();
+            loadStoreLogo();
+            console.log('Pantalla de cliente iniciada');
+        });
+
+        // Limpiar al cerrar
+        window.addEventListener('beforeunload', () => {
+            if (broadcastChannel) {
+                broadcastChannel.close();
+            }
+        });
+    </script>
+</body>
+</html>

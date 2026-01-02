@@ -36,6 +36,9 @@
                 <a href="inventory.html" class="nav-item">
                     <span><i class="fas fa-box"></i></span> Inventario
                 </a>
+                <a href="finance.html" class="nav-item">
+                    <span><i class="fas fa-wallet"></i></span> Finanzas
+                </a>
                 <a href="reports.html" class="nav-item active desktop-only-nav">
                     <span><i class="fas fa-chart-bar"></i></span> Reportes
                 </a>
@@ -710,7 +713,7 @@
             const dateStr = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
             const storeName = currentUser.store_name || 'Mi Negocio';
             const userName = currentUser.full_name || currentUser.username;
-            const logoUrl = currentUser.logo_url || 'assets/images/default-logo.png';
+            const logoUrl = getRelativeImagePath(currentUser.logo_url) || 'assets/images/default-logo.png';
             
             // Get theme colors
             const theme = getThemeColors();
@@ -1073,13 +1076,19 @@
 
             grid.innerHTML = products.map(p => {
                 const hasCode = p.barcode || p.qr_code;
-                const imgUrl = p.image_url ? p.image_url : 'assets/images/default-product.png';
+                const rawImg = p.image_path || p.image_url;
+                const imgPath = getRelativeImagePath(rawImg);
+                
+                const imgHtml = imgPath 
+                    ? `<img src="${imgPath}" class="qr-product-img" alt="${p.product_name}" onerror="this.outerHTML='<div class=\\'qr-product-img\\' style=\\'display:flex;align-items:center;justify-content:center;background:#f8f9fa;color:#ccc;font-size:2rem;\\'><i class=\\'fas fa-box\\'></i></div>'">`
+                    : `<div class="qr-product-img" style="display:flex;align-items:center;justify-content:center;background:#f8f9fa;color:#ccc;font-size:2rem;"><i class="fas fa-box"></i></div>`;
+
                 const stock = p.current_stock !== null ? p.current_stock : 0;
                 
                 return `
                     <div class="qr-product-card ${!hasCode ? 'no-qr' : ''}" onclick="${hasCode ? `addToQRListFromGrid(${p.product_id})` : `openAssignQRModal(${p.product_id})`}">
                         ${!hasCode ? '<span class="qr-status-badge">Sin QR asignado</span>' : ''}
-                        <img src="${imgUrl}" class="qr-product-img" alt="${p.product_name}">
+                        ${imgHtml}
                         <div class="qr-product-name" title="${p.product_name}">${p.product_name}</div>
                         <div class="qr-product-stock">Stock: ${stock}</div>
                     </div>
@@ -1162,10 +1171,16 @@
             }
 
             tbody.innerHTML = qrLabelList.map(item => {
-                const imgUrl = item.product.image_url ? item.product.image_url : 'assets/images/default-product.png';
+                const rawImg = item.product.image_path || item.product.image_url;
+                const imgPath = getRelativeImagePath(rawImg);
+                
+                const imgHtml = imgPath 
+                    ? `<img src="${imgPath}" alt="img" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;" onerror="this.outerHTML='<div style=\\'width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #f0f0f0; border-radius: 4px; color: #999;\\'><i class=\\'fas fa-box\\'></i></div>'">`
+                    : `<div style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #f0f0f0; border-radius: 4px; color: #999;"><i class="fas fa-box"></i></div>`;
+
                 return `
                 <tr>
-                    <td><img src="${imgUrl}" alt="img" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;"></td>
+                    <td>${imgHtml}</td>
                     <td>
                         <div style="font-weight: bold;">${item.product.product_name}</div>
                         <div style="font-size: 0.85em; color: #666;">${item.code}</div>

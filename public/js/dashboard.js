@@ -107,8 +107,9 @@ function renderTopProductsList(list) {
         tr.style.borderBottom = '1px solid #eee';
         
         let imgHtml = '';
-        if (item.image_path) {
-            imgHtml = `<img src="/${item.image_path}" alt="${item.product_name}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">`;
+        const imagePath = getRelativeImagePath(item.image_path);
+        if (imagePath) {
+            imgHtml = `<img src="${imagePath}" alt="${item.product_name}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;" onerror="this.outerHTML='<div style=\\'width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #f0f0f0; border-radius: 4px; color: #999;\\'><i class=\\'fas fa-box\\'></i></div>'">`;
         } else {
             imgHtml = `<div style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #f0f0f0; border-radius: 4px; color: #999;"><i class="fas fa-box"></i></div>`;
         }
@@ -168,8 +169,9 @@ function renderRecentSalesList(list) {
         const productNames = item.products.map(p => p.name).join(', ');
         
         item.products.slice(0, 5).forEach(prod => { // Limit to 5 icons to prevent overflow
-            if (prod.image) {
-                productsHtml += `<img src="/${prod.image}" alt="${prod.name}" title="${prod.name}" style="width: 30px; height: 30px; object-fit: cover; border-radius: 4px; border: 1px solid #eee;">`;
+            const imagePath = getRelativeImagePath(prod.image);
+            if (imagePath) {
+                productsHtml += `<img src="${imagePath}" alt="${prod.name}" title="${prod.name}" style="width: 30px; height: 30px; object-fit: cover; border-radius: 4px; border: 1px solid #eee;" onerror="this.outerHTML='<div title=\\'${prod.name}\\' style=\\'width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: #f0f0f0; border-radius: 4px; color: #999;\\'><i class=\\'fas fa-box\\'></i></div>'">`;
             } else {
                 productsHtml += `<div title="${prod.name}" style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: #f0f0f0; border-radius: 4px; color: #999;"><i class="fas fa-box"></i></div>`;
             }
