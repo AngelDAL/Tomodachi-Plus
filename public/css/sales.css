@@ -353,6 +353,45 @@
     }
 }
 
+/* Override/ensure .btn-finalize-sale uses secondary color and brightness variations */
+.btn-finalize-sale {
+    width: 100%;
+    padding: 12px;
+    background: var(--secondary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 120ms ease, filter 120ms ease, box-shadow 160ms ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.12);
+}
+
+.btn-finalize-sale:hover:not(:disabled) {
+    filter: brightness(1.06);
+    box-shadow: 0 8px 22px rgba(0,0,0,0.16);
+}
+
+.btn-finalize-sale:active:not(:disabled) {
+    filter: brightness(0.94);
+    transform: translateY(1px) scale(0.995);
+}
+
+.btn-finalize-sale:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    opacity: 0.6;
+    filter: none;
+    box-shadow: none;
+}
+
+
 /* Galería de productos */
 .gallery-main {
     display: grid;
@@ -929,7 +968,7 @@
 
 .btn-finalize-sale:hover:not(:disabled) {
     background: var(--primary-dark);
-    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    /* box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3); */
 }
 
 .btn-finalize-sale:active:not(:disabled) {
@@ -1495,6 +1534,10 @@
     background: #f9fafb;
 }
 
+#scaleStatusIndicator{
+    display: none;
+}
+
 .received-item .checkout-input:focus {
     border-color: #059669;
     background: #fff;
@@ -1505,7 +1548,7 @@
 /* Button Styling */
 .btn-finalize-sale {
     height: 52px;
-    background: #059669;
+    /* background: #059669; */
     color: white;
     border: none;
     border-radius: 8px;
@@ -1519,14 +1562,14 @@
     transition: all 0.2s;
     width: 100%;
     max-width: 320px;
-    justify-self: end; /* Align to right end of container */
-    box-shadow: 0 4px 6px rgba(5, 150, 105, 0.2);
+    justify-self: end; 
+    /* box-shadow: 0 4px 6px rgba(5, 150, 105, 0.2); */
 }
 
 .btn-finalize-sale:hover:not(:disabled) {
-    background: #047857;
+    /* background: #047857; */
     transform: translateY(-1px);
-    box-shadow: 0 6px 8px rgba(5, 150, 105, 0.25);
+    /* box-shadow: 0 6px 8px rgba(5, 150, 105, 0.25); */
 }
 
 .btn-finalize-sale:active:not(:disabled) {
@@ -1538,7 +1581,7 @@
     color: #9ca3af;
     cursor: not-allowed;
     box-shadow: none;
-}
+} 
 
 /* ================= RESPONSIVE LAYOUTS ================= */
 

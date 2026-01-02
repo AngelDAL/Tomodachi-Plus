@@ -131,6 +131,7 @@ function initPOS() {
   }
 
   loadCategoriesAndProducts();
+  loadActivePromotions();
 }
 
 function bindEvents() {
@@ -415,6 +416,11 @@ function renderCart() {
   } else {
     emptyCartMsg.style.display = 'none';
     if (finalizeSaleBtn) finalizeSaleBtn.disabled = false;
+
+    // Apply promotions
+    if (typeof applyPromotions === 'function') applyPromotions();
+    // Recalculate subtotals
+    CART.forEach(item => item.subtotal = item.quantity * item.unit_price);
 
     // Contar cantidad de productos DIFERENTES (no la suma de cantidades)
     const totalItems = CART.length;
@@ -1160,8 +1166,9 @@ function recalcItemPrice(item) {
 function recalcTotals() {
   const subtotal = CART.reduce((s, i) => s + i.subtotal, 0);
   const discount = (discountInput && discountInput.value) ? parseFloat(discountInput.value) : 0;
+  const promoDiscount = (typeof CURRENT_BILL_DISCOUNT !== 'undefined') ? CURRENT_BILL_DISCOUNT : 0;
   const tax = (taxInput && taxInput.value) ? parseFloat(taxInput.value) : 0;
-  const total = Math.max(0, subtotal - discount + tax);
+  const total = Math.max(0, subtotal - discount - promoDiscount + tax);
   if (totalBadge) {
     totalBadge.textContent = formatCurrency(total);
   }
@@ -2747,3 +2754,119 @@ window.addEventListener('beforeunload', () => {
     customerDisplayWindow.close();
   }
 });
+
+// ==========================================
+// SISTEMA DE PROMOCIONES
+// ==========================================
+
+let ACTIVE_PROMOTIONS = [];
+let CURRENT_BILL_DISCOUNT = 0;
+
+async function loadActivePromotions() {
+    try {
+        const res = await fetch('../api/promotions/read.php?active=true');
+        const data = await res.json();
+        if (data.success) {
+            ACTIVE_PROMOTIONS = data.data;
+            console.log('Promociones cargadas:', ACTIVE_PROMOTIONS.length);
+        }
+    } catch (e) {
+        console.error('Error loading promotions', e);
+    }
+}
+
+function applyPromotions() {
+    if (!ACTIVE_PROMOTIONS.length) return;
+
+    // Reset item prices to original (unless manually edited)
+    CART.forEach(item => {
+        if (!item.manual_edit) {
+             item.unit_price = item.original_price;
+             item.promo_applied = null;
+        }
+    });
+
+    CURRENT_BILL_DISCOUNT = 0;
+    let totalBillDiscount = 0;
+
+    // 1. Apply Item-level promotions (Simple, Bulk)
+    ACTIVE_PROMOTIONS.forEach(promo => {
+        if (promo.type === 'simple_discount') {
+            applySimpleDiscount(promo);
+        } else if (promo.type === 'bulk_discount') {
+            applyBulkDiscount(promo);
+        }
+    });
+
+    // 2. Apply Bill-level promotions
+    // Calculate subtotal after item discounts
+    let subtotal = CART.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
+    
+    ACTIVE_PROMOTIONS.forEach(promo => {
+        if (promo.type === 'bill_discount') {
+            if (subtotal >= parseFloat(promo.min_purchase_amount)) {
+                if (promo.discount_type === 'percentage') {
+                    totalBillDiscount += subtotal * (parseFloat(promo.discount_value) / 100);
+                } else {
+                    totalBillDiscount += parseFloat(promo.discount_value);
+                }
+            }
+        }
+    });
+    
+    CURRENT_BILL_DISCOUNT = totalBillDiscount;
+}
+
+function applySimpleDiscount(promo) {
+    CART.forEach(item => {
+        if (isTarget(item, promo)) {
+            let discount = 0;
+            if (promo.discount_type === 'percentage') {
+                discount = item.original_price * (parseFloat(promo.discount_value) / 100);
+            } else {
+                discount = parseFloat(promo.discount_value);
+            }
+            
+            let newPrice = item.original_price - discount;
+            if (newPrice < 0) newPrice = 0;
+            
+            if (!item.manual_edit && newPrice < item.unit_price) {
+                item.unit_price = newPrice;
+                item.promo_applied = promo.name;
+            }
+        }
+    });
+}
+
+function applyBulkDiscount(promo) {
+    let eligibleItems = CART.filter(item => isTarget(item, promo));
+    let totalQty = eligibleItems.reduce((sum, item) => sum + item.quantity, 0);
+    
+    if (totalQty >= parseInt(promo.min_quantity)) {
+        eligibleItems.forEach(item => {
+             let discount = 0;
+            if (promo.discount_type === 'percentage') {
+                discount = item.original_price * (parseFloat(promo.discount_value) / 100);
+            } else {
+                discount = parseFloat(promo.discount_value);
+            }
+            
+            let newPrice = item.original_price - discount;
+            if (newPrice < 0) newPrice = 0;
+            
+            if (!item.manual_edit && newPrice < item.unit_price) {
+                item.unit_price = newPrice;
+                item.promo_applied = promo.name;
+            }
+        });
+    }
+}
+
+function isTarget(item, promo) {
+    if (!promo.targets || promo.targets.length === 0) return false;
+    return promo.targets.some(t => 
+        (t.product_id && t.product_id == item.product_id) || 
+        (t.category_id && t.category_id == item.category_id)
+    );
+}
+

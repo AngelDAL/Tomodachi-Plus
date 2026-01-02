@@ -136,6 +136,9 @@
                 <a href="inventory.html" class="nav-item">
                     <span><i class="fas fa-box"></i></span> Inventario
                 </a>
+                <a href="promotions.html" class="nav-item desktop-only-nav">
+                    <span><i class="fas fa-tags"></i></span> Promociones
+                </a>
                 <a href="finance.html" class="nav-item active">
                     <span><i class="fas fa-wallet"></i></span> Finanzas
                 </a>
@@ -151,6 +154,23 @@
                         </span>
                         <span class="nav-text">Mi Perfil</span>
                     </a>
+                        <div class="user-tooltip-menu" id="profileTooltipMenu">
+                            <a href="profile.html" class="tooltip-item">
+                                <i class="fas fa-cog"></i> Configuración
+                            </a>
+                            <a href="promotions.html" class="tooltip-item">
+                                <i class="fas fa-tags"></i> Promociones
+                            </a>
+                            <a href="reports.html" class="tooltip-item">
+                                <i class="fas fa-chart-bar"></i> Reportes
+                            </a>
+                            <a href="#" class="tooltip-item js-support-btn">
+                                <i class="fas fa-headset"></i> Soporte
+                            </a>
+                            <a href="#" class="tooltip-item" onclick="logout(); return false;">
+                                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                            </a>
+                        </div>
                 </div>
                 <a href="#" class="nav-item" id="logoutBtn">
                     <span><i class="fas fa-sign-out-alt"></i></span> Cerrar Sesión
