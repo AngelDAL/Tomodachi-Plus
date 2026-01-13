@@ -22,8 +22,8 @@
     php_value session.use_only_cookies 1
 </IfModule>
 
-# Redirigir al login si se accede a la raíz
+# Redirigir a la página principal (index.html) si se accede a la raíz
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteRule ^$ public/login.html [L,R=302]
+    RewriteRule ^$ public/index.html [L,R=302]
 </IfModule>
