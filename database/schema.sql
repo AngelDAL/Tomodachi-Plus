@@ -13,10 +13,12 @@ CREATE TABLE stores (
     theme_config TEXT NULL,
     settings TEXT NULL,
     logo_url VARCHAR(255) NULL,
+    subscription_plan ENUM('free', 'premium') DEFAULT 'free',
     status ENUM('active', 'inactive') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_status (status)
+    INDEX idx_status (status),
+    INDEX idx_subscription_plan (subscription_plan)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla: users (Usuarios)

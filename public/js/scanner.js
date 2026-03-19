@@ -7,8 +7,12 @@ let isScanningLocked = false; // Bloqueo para evitar lecturas múltiples
 document.addEventListener('DOMContentLoaded', () => {
   const toggleScannerBtn = document.getElementById('toggleScannerBtn');
   const scannerContainer = document.getElementById('scannerContainer');
+  const closeScannerOverlayBtn = document.getElementById('closeScannerOverlayBtn'); // Botón flotante nuevo
+  const closeScannerContainerBtn = document.getElementById('closeScannerContainerBtn'); // Botón interno nuevo
+  
   if (!toggleScannerBtn || !scannerContainer) return; // Si no existe en esta vista, salir.
 
+  // Event listener para el botón principal (toggle)
   toggleScannerBtn.addEventListener('click', () => {
     if (scannerContainer.classList.contains('hidden')) {
       startScanner();
@@ -17,14 +21,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Listener para el botón de cierre interno (Mobile/Desktop)
+  if (closeScannerContainerBtn) {
+      closeScannerContainerBtn.addEventListener('click', stopScanner);
+  }
+
+  // Listener para el botón de cierre flotante (Legacy)
+  const legacyOverlayBtn = document.getElementById('closeScannerOverlayBtn');
+  if (legacyOverlayBtn) {
+    legacyOverlayBtn.addEventListener('click', stopScanner);
+  }
+
   function startScanner() {
+    document.body.classList.add('scanner-active'); // Activar modo inmersivo CSS
     scannerContainer.classList.remove('hidden');
+    
+    // Cambiar icono del botón principal por si acaso (aunque se oculta en móvil)
     toggleScannerBtn.innerHTML = '<i class="fas fa-times"></i>';
     toggleScannerBtn.setAttribute('aria-label', 'Cerrar escáner');
     
-    // Ocultar galería de productos
-    const productsMain = document.querySelector('.products-main');
+    // Ocultar galería de productos (Controlado por CSS scanner-active también, pero mantenemos JS por seguridad)
+    const productsMain = document.querySelector('.products-main'); // Legacy selector
+    const galleryMain = document.querySelector('.gallery-main');
+    const searchResults = document.getElementById('searchResults');
+    
     if (productsMain) productsMain.classList.add('hidden');
+    // if (galleryMain) galleryMain.classList.add('hidden'); // CSS lo maneja mejor ahora
 
     if (!qrScannerInstance) {
       try {
@@ -48,13 +70,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const config = { 
             fps: 10, 
             qrbox: function (viewfinderWidth, viewfinderHeight) {
-                // Cálculo dinámico del área de escaneo (70% del lado más pequeño)
-                let minEdgePercentage = 0.7;
-                let minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
-                let qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
+                // Cálculo dinámico con validación de tamaño mínimo para evitar error 'qrbox dimension value is 50px'
+                const minDimension = Math.min(viewfinderWidth, viewfinderHeight);
+                const percentage = 0.7; // 70% del área
+                let boxSize = Math.floor(minDimension * percentage);
+                
+                // Asegurar tamaño mínimo válido (mayor a 50px según librería, pero mejor 150px para usabilidad)
+                if (boxSize < 100) {
+                    boxSize = Math.max(50, minDimension - 20); // Intentar ajustar al contenedor si es muy pequeño
+                }
+
+                // Ajustar si el cálculo supera el viewport (no debería si es 70% de minDimension)
                 return {
-                    width: qrboxSize,
-                    height: qrboxSize
+                    width: boxSize,
+                    height: boxSize
                 };
             },
             aspectRatio: 1.0,
@@ -63,11 +92,15 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const cameraConfig = { facingMode: 'environment' };
         
-        qrScannerInstance.start(cameraConfig, config, onScanSuccess, onScanError)
-          .catch(err => { 
-            console.error("Error iniciando escáner:", err); 
-            if (window.showNotification) showNotification('No se pudo acceder a la cámara. Verifique permisos.','error'); 
-          });
+        // Pequeño retardo para asegurar que el contenedor es visible y tiene dimensiones
+        // Esto evita el error "minimum size of 'config.qrbox' dimension value is 50px"
+        setTimeout(() => {
+            qrScannerInstance.start(cameraConfig, config, onScanSuccess, onScanError)
+              .catch(err => { 
+                console.error("Error iniciando escáner:", err); 
+                if (window.showNotification) showNotification('No se pudo acceder a la cámara. Verifique permisos.','error'); 
+              });
+        }, 300);
       } catch (e) {
         console.error(e);
       }
@@ -75,6 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function stopScanner() {
+    document.body.classList.remove('scanner-active'); // Desactivar modo inmersivo
+
     if (qrScannerInstance) {
       qrScannerInstance.stop().then(() => {
         qrScannerInstance.clear();
@@ -85,9 +120,16 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleScannerBtn.innerHTML = '<i class="fas fa-barcode"></i>';
     toggleScannerBtn.setAttribute('aria-label', 'Activar escáner');
 
-    // Mostrar galería de productos
+    // Restaurar vistas
     const productsMain = document.querySelector('.products-main');
     if (productsMain) productsMain.classList.remove('hidden');
+
+    // Remover estilos inline forzados por la librería si quedan
+    if (scannerContainer) {
+        scannerContainer.style.removeProperty('position');
+        scannerContainer.style.removeProperty('top');
+        scannerContainer.style.removeProperty('height');
+    }
   }
 
   function onScanSuccess(decodedText) {

@@ -47,3 +47,11 @@ define('REGISTER_CLOSED', 'closed');
 // Paginación
 define('RECORDS_PER_PAGE', 20);
 
+// Planes de suscripción (Solo relevante en modo SAAS)
+define('PLAN_FREE', 'free');
+define('PLAN_PREMIUM', 'premium');
+
+// Modo de Despliegue
+// 'OPEN_SOURCE': Todas las features desbloqueadas por defecto
+// 'SAAS': Verifica suscripción y planes
+define('APP_MODE', 'SAAS'); 

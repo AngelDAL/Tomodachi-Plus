@@ -5,6 +5,9 @@ let CART = [];
 let MULTI_CARTS = { '1': [], '2': [], '3': [], '4': [] }; // Soporte para múltiples carritos
 let CURRENT_TAB = '1';
 
+// Control de operaciones para evitar duplicados por clicks rápidos
+let isCartProcessing = false;
+
 let CURRENT_STORE_ID = null;
 let allProducts = [];
 let allCategories = [];
@@ -29,6 +32,23 @@ let optPercent, optFixed, optNxn;
 
 let EDITING_PRODUCT_ID = null;
 
+// Agregar toggle para footer del carrito y acciones del header
+function setupToggles() {
+    // Footer Cart Toggle eliminado bajo solicitud del usuario
+    // ahora el footer es estático y siempre visible.
+
+    // Header Actions Toggle (Chevron Centrado) - Obsoleto
+    // Se mantiene código muerto por si se revierte, pero no afectará si el elemento no existe
+    const collapseHeaderBtn = document.getElementById('collapseHeaderBtn');
+    const actionsRow = document.getElementById('headerActionsRow');
+
+    if(collapseHeaderBtn && actionsRow) {
+        collapseHeaderBtn.onclick = () => {
+            /* Logic disabled */
+        };
+    }
+}
+
 function initPOS() {
   // Inicializar referencias a elementos DOM
   searchInput = document.getElementById('searchInput');
@@ -43,12 +63,13 @@ function initPOS() {
   checkoutReceivedInput = document.getElementById('checkoutReceived');
   checkoutChangeDisplay = document.getElementById('checkoutChange');
   finalizeSaleBtn = document.getElementById('finalizeSaleBtn');
-  cartToggle = document.getElementById('cartToggle');
-  cartPanel = document.getElementById('cartPanel');
-  closeCartBtn = document.getElementById('closeCartBtn');
+  
+  // Cart Layout Elements
+  cartBadge = document.getElementById('mobileCartCount'); 
+
+  
   productGallery = document.getElementById('productGallery');
   categoryBar = document.getElementById('categoryBar');
-  cartHandleBtn = document.getElementById('cartHandle');
   panelTotalEl = document.getElementById('panelTotal');
 
   // Modal elements init
@@ -72,13 +93,21 @@ function initPOS() {
 
   // Ahora vinculamos eventos
   bindEvents();
+  setupToggles(); // Inicializar toggles (footer y header)
+
+  // Delegación de eventos para el carrito (Fix doble click y performance)
+  setupCartEventsDelegation();
 
   // Inyectar interfaz de pestañas si no existe
   injectCartTabsUI();
-  injectHistorySidebar();
-
-  // Inyectar Sidebar de Historial
-  // injectHistorySidebar(); // Ya llamado arriba
+  // Configuración del modal de historial
+  // Antes se llamaba a injectHistorySidebar, ahora usamos setupHistoryModal
+  // Aseguramos que el botón exista antes de llamarlo
+  if(document.getElementById('toggleHistoryBtn')) {
+      // Definimos la función inline si queremos asegurar su ejecución o renombramos la inyección
+      // Pero mejor, actualizamos la referencia si es necesario
+      setupHistoryModal(); 
+  }
 
   // Persistencia: Cargar carritos guardados (Sistema Multi-Tab)
   const savedCarts = localStorage.getItem('tomodachi_multi_carts');
@@ -150,39 +179,94 @@ function bindEvents() {
     });
   }
 
-  // Carrito toggle
-  if (cartToggle) {
-    cartToggle.addEventListener('click', () => {
-      toggleCartPanel();
-    });
+  // Mobile View Switcher logic (New)
+  const viewSwitchBtns = document.querySelectorAll('.view-switch-btn');
+  const productsColumn = document.querySelector('.products-column');
+  const cartColumn = document.querySelector('.cart-column');
+
+  if (viewSwitchBtns.length > 0) {
+      viewSwitchBtns.forEach(btn => {
+          btn.addEventListener('click', () => {
+              const target = btn.dataset.target;
+              
+              viewSwitchBtns.forEach(b => b.classList.remove('active'));
+              btn.classList.add('active');
+
+              // Toggle visibility classes
+              if (target === 'products-column') {
+                  if(productsColumn) productsColumn.classList.add('active');
+                  if(cartColumn) cartColumn.classList.remove('active');
+              } else {
+                  if(cartColumn) cartColumn.classList.add('active');
+                  if(productsColumn) productsColumn.classList.remove('active');
+              }
+          });
+      });
   }
 
-  if (closeCartBtn && cartPanel) {
-    closeCartBtn.addEventListener('click', () => {
-      cartPanel.classList.remove('open');
-      cartPanel.setAttribute('aria-hidden', 'true');
-    });
+  // Eventos de los Nuevos Filtros (Categoría y Orden)
+  const categoryFilter = document.getElementById('categoryFilter');
+  const sortFilter = document.getElementById('sortFilter');
+
+    // Manejo del Nuevo Menú de Configuración
+    const configBtn = document.getElementById('configMenuBtn');
+    const configDropdown = document.getElementById('configDropdown');
+    const toggleScaleBtn = document.getElementById('toggleScaleBtn');
+    const toggleCustomerBtn = document.getElementById('toggleCustomerDisplayBtn');
+    const toggleHistoryBtn = document.getElementById('toggleHistoryBtn');
+
+    if (configBtn && configDropdown) {
+        configBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            configDropdown.classList.toggle('hidden');
+        });
+
+        // Cerrar al hacer clic fuera
+        document.addEventListener('click', (e) => {
+            if (!configDropdown.contains(e.target) && e.target !== configBtn) {
+                configDropdown.classList.add('hidden');
+            }
+        });
+    }
+
+    if(toggleScaleBtn) {
+        toggleScaleBtn.addEventListener('click', () => {
+             // Solo ocultar dropdown (la acción la maneja initScaleManager)
+             if(configDropdown) configDropdown.classList.add('hidden');
+        });
+    }
+
+    if(toggleCustomerBtn) {
+        toggleCustomerBtn.addEventListener('click', () => {
+             if(configDropdown) configDropdown.classList.add('hidden');
+             // La acción la maneja initCustomerDisplay
+        });
+    }
+
+    if(toggleHistoryBtn) {
+        toggleHistoryBtn.addEventListener('click', () => {
+             if(configDropdown) configDropdown.classList.add('hidden');
+             // La acción la maneja setupHistoryModal
+        });
+    }
+
+    // Header Actions Toggle (Chevron Centrado) - YA NO SE USA
+    /* 
+    const collapseHeaderBtn = document.getElementById('collapseHeaderBtn'); 
+    ... Eliminar o comentar
+    */
+
+  if(categoryFilter) {
+      categoryFilter.addEventListener('change', (e) => {
+          activeCategoryId = e.target.value === 'all' ? null : e.target.value;
+          filterAndRenderProducts();
+      });
   }
 
-  if (cartHandleBtn) {
-    cartHandleBtn.addEventListener('click', () => toggleCartPanel());
-    // Drag para abrir/cerrar
-    let startX = null, dragging = false;
-    const onDown = (e) => { startX = (e.touches ? e.touches[0].clientX : e.clientX); dragging = true; };
-    const onMove = (e) => {
-      if (!dragging) return;
-      const x = (e.touches ? e.touches[0].clientX : e.clientX);
-      const dx = startX - x; // positivo al arrastrar hacia la izquierda
-      if (!cartPanel.classList.contains('open') && dx > 40) { toggleCartPanel(true); dragging = false; }
-      if (cartPanel.classList.contains('open') && dx < -40) { toggleCartPanel(false); dragging = false; }
-    };
-    const onUp = () => { dragging = false; };
-    cartHandleBtn.addEventListener('mousedown', onDown);
-    cartHandleBtn.addEventListener('touchstart', onDown, { passive: true });
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('touchmove', onMove, { passive: true });
-    window.addEventListener('mouseup', onUp);
-    window.addEventListener('touchend', onUp);
+  if(sortFilter) {
+      sortFilter.addEventListener('change', (e) => {
+          filterAndRenderProducts(); // Re-render con orden
+      });
   }
 
   // Pestañas del carrito (Venta 1, 2, 3, 4)
@@ -260,6 +344,39 @@ function bindEvents() {
   });
 
   // Eliminado auto-cierre al hacer click fuera: el usuario controla con botones
+  
+  // Simple Swipe Navigation for Mobile
+  let touchStartX = 0;
+  const contentGrid = document.querySelector('.pos-content-grid');
+  
+  if (contentGrid) {
+      contentGrid.addEventListener('touchstart', e => {
+          touchStartX = e.changedTouches[0].screenX;
+      }, {passive: true});
+      
+      contentGrid.addEventListener('touchend', e => {
+          const touchEndX = e.changedTouches[0].screenX;
+          const diff = touchStartX - touchEndX;
+          const threshold = 50; // min swipe distance
+          
+          if (Math.abs(diff) < threshold) return;
+          
+          if (window.innerWidth <= 900) {
+              const productsBtn = document.querySelector('.view-switch-btn[data-target="products-column"]');
+              const cartBtn = document.querySelector('.view-switch-btn[data-target="cart-column"]');
+              
+              if (diff > 0) { // Swiped Left: Go to Cart (if on Products)
+                   if (productsBtn && productsBtn.classList.contains('active') && cartBtn) {
+                       cartBtn.click();
+                   }
+              } else { // Swiped Right: Go to Products (if on Cart)
+                  if (cartBtn && cartBtn.classList.contains('active') && productsBtn) {
+                      productsBtn.click();
+                  }
+              }
+          }
+      }, {passive: true});
+  }
 }
 
 function switchCartTab(tabName) {
@@ -350,17 +467,21 @@ async function searchProducts(term) {
 }
 
 function addProductToCart(prod) {
+  // Evitar duplicados por clicks rápidos (Debounce de operación)
+  if (isCartProcessing) return;
+  isCartProcessing = true;
+
   // Recargar promociones activas para asegurar tener las últimas reglas
-  // Esto permite que si se creó una promo hace un segundo, aplique inmediatamente
   loadActivePromotions().then(() => {
-      // Continuar con la lógica normal después de refrescar promos...
       // Si es producto a granel, solicitar cantidad primero
       if (prod.is_bulk == 1) {
         promptBulkQuantity(prod);
-        return;
+      } else {
+        _addToCartInternal(prod);
       }
-      
-      _addToCartInternal(prod);
+  }).finally(() => {
+     // Liberar bloqueo después de un breve delay para evitar rebotes
+     setTimeout(() => { isCartProcessing = false; }, 300);
   });
 }
 
@@ -405,6 +526,98 @@ function _addToCartInternal(prod) {
   showNotification('Producto añadido', 'success');
 }
 
+
+
+
+/* Solución para el problema de doble click: DELEGACIÓN DE EVENTOS */
+function setupCartEventsDelegation() {
+    if(!cartBody) return;
+
+    // Verificar si ya se adjuntaron eventos para evitar duplicados
+    if (cartBody.dataset.eventsAttached === 'true') {
+        console.log('Cart events already attached, skipping...');
+        return;
+    }
+
+    // Solo un listener para todos los items
+    cartBody.addEventListener('click', (e) => {
+        // Encontrar target relevante
+        const target = e.target;
+        
+        // 1. STEPPER BTN (+ / -)
+        const stepBtn = target.closest('.step-btn');
+        if (stepBtn) {
+            e.stopPropagation();
+            e.preventDefault(); // Prevenir selección o doble trigger
+            
+            // Protección contra clicks rápidos (rebote)
+            if (isCartProcessing) return;
+            isCartProcessing = true;
+            // Liberar bloqueo rápido para permitir interacción fluida pero evitar rebotes mecánicos
+            setTimeout(() => isCartProcessing = false, 250);
+
+            handleStepBtnClick(stepBtn);
+            return;
+        }
+
+        // 2. QTY DISPLAY (Manual Entry)
+        const qtyDisplay = target.closest('.qty-display');
+        if (qtyDisplay) {
+            e.stopPropagation();
+// ...
+
+            const id = parseInt(qtyDisplay.getAttribute('data-id'));
+            const it = CART.find(i => i.product_id === id);
+            if(it && it.is_bulk == 1) promptBulkQuantity(it);
+            return;
+        }
+
+        // 3. EDIT OPTIONS (Price or Item click?)
+        // Se pidió que al seleccionar precio pueda modificarlo
+        const priceArea = target.closest('.item-price-area');
+        if(priceArea) {
+             e.stopPropagation();
+             const id = parseInt(priceArea.getAttribute('data-id'));
+             openItemOptions(id);
+             return;
+        }
+    });
+
+    // Marcar que ya está setup
+    cartBody.dataset.eventsAttached = 'true';
+}
+
+function handleStepBtnClick(btn) {
+    const id = parseInt(btn.getAttribute('data-id'));
+    const action = btn.getAttribute('data-action');
+    const it = CART.find(i => i.product_id === id);
+    if(!it) return;
+
+    let step = it.is_bulk == 1 ? 0.1 : 1; 
+    if(it.is_bulk == 1 && action === 'minus' && it.quantity <= 0.1) step = 0.01;
+
+    let newQty = action === 'plus' ? it.quantity + step : it.quantity - step;
+    
+    // Fix JS float precision
+    newQty = Math.round(newQty * 1000) / 1000;
+
+    if(newQty <= 0) {
+           CART = CART.filter(i => i.product_id !== id);
+           playSound('Sound3.mp3');
+    } else {
+        // Stock Check
+        const maxStock = (it.stock_quantity !== undefined && it.stock_quantity !== null && it.stock_quantity !== '') ? parseFloat(it.stock_quantity) : null;
+        if (action === 'plus' && maxStock !== null && newQty > maxStock) {
+            showNotification(`Stock máximo alcanzado (${maxStock})`, 'warning');
+            return; 
+        }
+        it.quantity = newQty;
+    }
+    
+    recalcItemPrice(it);
+    renderCart();
+}
+
 function renderCart() {
   // Persistencia: Guardar estado multi-carrito
   MULTI_CARTS[CURRENT_TAB] = CART;
@@ -421,25 +634,33 @@ function renderCart() {
     if (finalizeSaleBtn) finalizeSaleBtn.disabled = true;
     if (cartBadge) {
       cartBadge.textContent = '0';
+      cartBadge.classList.add('hidden');
       cartBadge.style.display = 'none';
     }
-  } else {
-    emptyCartMsg.style.display = 'none';
-    if (finalizeSaleBtn) finalizeSaleBtn.disabled = false;
-
-    // Apply promotions
-    if (typeof applyPromotions === 'function') applyPromotions();
-    // Recalculate subtotals
-    CART.forEach(item => item.subtotal = item.quantity * item.unit_price);
-
-    // Contar cantidad de productos DIFERENTES (no la suma de cantidades)
-    const totalItems = CART.length;
-    if (cartBadge) {
-      cartBadge.textContent = totalItems;
-      cartBadge.style.display = 'flex';
+    if(panelTotalEl) {
+        panelTotalEl.textContent = formatCurrency(0);
+        document.getElementById('cartSubtotal').textContent = formatCurrency(0);
     }
+    return;
+  }
 
-    cartBody.innerHTML = CART.map(item => {
+  emptyCartMsg.style.display = 'none';
+  if (finalizeSaleBtn) finalizeSaleBtn.disabled = false;
+
+  // Actualizar badge global si existe
+  if (cartBadge) {
+    const totalItems = CART.reduce((acc, item) => acc + item.quantity, 0); // O CART.length
+    cartBadge.textContent = totalItems > 99 ? '99+' : Math.round(totalItems);
+    cartBadge.classList.remove('hidden');
+    cartBadge.style.display = '';
+  }
+
+    // Generate HTML (Optimized Layout requested)
+    // Orden Inverso: Mostrar el último item agregado primero (LIFO visual)
+    const displayCart = [...CART].reverse();
+
+    // [Image] [Center: Name + Price below] [Right: Stepper]
+    cartBody.innerHTML = displayCart.map(item => {
       let imgHtml = '<div class="cart-item-img-placeholder"><i class="fas fa-box"></i></div>';
       const imagePath = getRelativeImagePath(item.image_path);
       
@@ -447,75 +668,42 @@ function renderCart() {
         imgHtml = `<img src="${imagePath}" alt="img" class="cart-item-img" onerror="this.outerHTML='<div class=\\'cart-item-img-placeholder\\'><i class=\\'fas fa-box\\'></i></div>'">`;
       }
 
-      // Price display (show original crossed out if discounted)
-      let priceHtml = formatCurrency(item.unit_price);
-      if (item.unit_price < item.original_price) {
-        priceHtml = `<div class="price-col">
-                <span class="old-price">${formatCurrency(item.original_price)}</span>
-                <span class="new-price">${formatCurrency(item.unit_price)}</span>
-            </div>`;
+      // Price logic
+      let priceHtml = formatCurrency(item.subtotal);
+      if (item.unit_price < item.original_price || item.subtotal !== (item.quantity * item.unit_price)) {
+         priceHtml = formatCurrency(item.subtotal);
       }
       
-      // Mostrar unidad para productos a granel
       const unitLabel = item.is_bulk == 1 ? ` ${item.bulk_unit || 'kg'}` : '';
 
-      return `<tr>
-      <td>
-        <div class="cart-item-info">
-            ${imgHtml}
-            <div class="cart-item-name">${escapeHtml(item.product_name)}</div>
-        </div>
-      </td>
-      <td>${priceHtml}</td>
-      <td><input type="number" ${item.is_bulk == 1 ? 'step="0.001"' : ''} min="${item.is_bulk == 1 ? '0.001' : '1'}" value="${item.quantity}" data-id="${item.product_id}" class="qty-input">${unitLabel}</td>
-      <td>
-        <div class="cart-actions">
-            <button class="edit-btn" data-id="${item.product_id}" title="Editar precio/descuento"><i class="fas fa-pencil-alt"></i></button>
-            <button class="remove-btn" data-id="${item.product_id}" title="Eliminar"><i class="fas fa-trash"></i></button>
-        </div>
-      </td>
-    </tr>`;
+      return `
+      <div class="cart-item-card">
+          <!-- Left: Image -->
+          <div class="cart-item-left">
+              ${imgHtml}
+          </div>
+          
+          <!-- Center: Name + Price -->
+          <div class="cart-item-center">
+              <div class="cart-item-title">${escapeHtml(item.product_name)}</div>
+              <div class="item-price-area" data-id="${item.product_id}" title="Editar precio/descuento">
+                  ${priceHtml}
+              </div>
+          </div>
+          
+          <!-- Right: Controls (Stepper) -->
+          <div class="cart-item-right">
+              <div class="cart-item-stepper">
+                  <button class="step-btn minus" data-id="${item.product_id}" data-action="minus"><i class="fas fa-minus"></i></button>
+                  <span class="qty-display" data-id="${item.product_id}">${parseFloat(item.quantity) + unitLabel}</span>
+                  <button class="step-btn plus" data-id="${item.product_id}" data-action="plus"><i class="fas fa-plus"></i></button>
+              </div>
+          </div>
+      </div>`;
     }).join('');
 
-    // Bind qty changes
-    Array.from(cartBody.querySelectorAll('.qty-input')).forEach(inp => {
-      inp.addEventListener('input', () => {
-        const id = parseInt(inp.getAttribute('data-id'));
-        const it = CART.find(i => i.product_id === id);
-        
-        // Para productos a granel, permitir decimales
-        let q = it && it.is_bulk == 1 ? parseFloat(inp.value) : parseInt(inp.value);
-        const minQty = it && it.is_bulk == 1 ? 0.001 : 1;
-        
-        if (!q || q < minQty) q = minQty;
-        inp.value = q;
-        
-        if (it) {
-          it.quantity = q;
-          recalcItemPrice(it);
-          renderCart();
-        }
-      });
-    });
-
-    // Bind remove
-    Array.from(cartBody.querySelectorAll('.remove-btn')).forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = parseInt(btn.getAttribute('data-id'));
-        CART = CART.filter(i => i.product_id !== id);
-        playSound('Sound3.mp3');
-        renderCart();
-      });
-    });
-
-    // Bind edit
-    Array.from(cartBody.querySelectorAll('.edit-btn')).forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = parseInt(btn.getAttribute('data-id'));
-        openItemOptions(id);
-      });
-    });
-  }
+    // NOTA: Ya no vinculamos eventos aquí dentro porque usamos delegación en setupCartEventsDelegation()
+    
   recalcTotals();
 }
 
@@ -653,17 +841,24 @@ function useBulkScaleWeight() {
 
 // Confirmar y agregar producto a granel al carrito
 function confirmBulkQuantity() {
+  if (isCartProcessing) return;
+  isCartProcessing = true;
+
   const input = document.getElementById('bulkQuantityInput');
   const quantity = parseFloat(input.value);
   
   if (!quantity || quantity <= 0) {
     showNotification('Ingresa una cantidad válida', 'warning');
     input.focus();
+    isCartProcessing = false;
     return;
   }
   
   const prod = window._tempBulkProduct;
-  if (!prod) return;
+  if (!prod) {
+    isCartProcessing = false;
+    return;
+  }
 
   loadActivePromotions().then(() => {
     // Buscar si ya existe en el carrito
@@ -696,6 +891,8 @@ function confirmBulkQuantity() {
     renderCart();
     showNotification(`${quantity} ${prod.bulk_unit} agregados`, 'success');
     closeBulkModal();
+  }).finally(() => {
+    setTimeout(() => isCartProcessing = false, 300);
   });
 }
 
@@ -836,144 +1033,111 @@ function injectCartTabsUI() {
 
 }
 
-function injectHistorySidebar() {
-  if (document.getElementById('historyHandle')) return;
-
-  // 1. Crear Botón Flotante (Handle)
-  const historyHandle = document.createElement('button');
-  historyHandle.id = 'historyHandle';
-  historyHandle.className = 'cart-handle history-handle'; // Reutiliza estilos base
-  historyHandle.setAttribute('aria-label', 'Abrir historial');
-  historyHandle.innerHTML = '<i class="fas fa-history"></i>';
-
-  // Estilos específicos para diferenciarlo y posicionarlo
-  // Inicialmente oculto fuera de pantalla (translateX)
-  historyHandle.style.cssText = `
-        top: 59%; /* Debajo del carrito */
-        background: #6c757d; /* Color sutil (gris) */
-        transform: translateX(120%); /* Oculto a la derecha */
-        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-        display: flex; /* Siempre flex, controlamos visibilidad con transform */
-        z-index: 1049;
-    `;
-
-  // 2. Crear Panel Lateral
-  const historyPanel = document.createElement('aside');
-  historyPanel.id = 'historyPanel';
-  historyPanel.className = 'cart-side-panel'; // Reutiliza estilos base
-  historyPanel.setAttribute('aria-label', 'Historial de Ventas');
-  historyPanel.setAttribute('aria-hidden', 'true');
-  historyPanel.style.zIndex = '1051'; // Un poco más alto que el carrito por si acaso
-
-  historyPanel.innerHTML = `
-        <div class="cart-side-header" style="background: #f8f9fa; color: #333; border-bottom: 1px solid #dee2e6;">
-            <h2>Historial</h2>
-            <button class="close-cart" id="closeHistoryBtn" aria-label="Cerrar historial"><i class="fas fa-times"></i></button>
-        </div>
-        <div id="historyPanelBody" style="flex: 1; overflow-y: auto; padding: 10px;">
-            <!-- Contenido dinámico -->
-        </div>
-    `;
-
-  // Insertar en el DOM
-  document.body.appendChild(historyHandle);
-  document.body.appendChild(historyPanel);
-
-  // 3. Lógica de Toggle
-  const cartPanel = document.getElementById('cartPanel');
-  const cartHandle = document.getElementById('cartHandle');
-
-  function toggleHistory(forceOpen = null) {
-    const isOpen = historyPanel.classList.contains('open');
-    const shouldOpen = forceOpen !== null ? forceOpen : !isOpen;
-
-    if (shouldOpen) {
-      // Cerrar carrito si está abierto
-      if (cartPanel && cartPanel.classList.contains('open')) {
-        cartPanel.classList.remove('open');
-        cartPanel.setAttribute('aria-hidden', 'true');
-      }
-
-      historyPanel.classList.add('open');
-      historyPanel.setAttribute('aria-hidden', 'false');
-      renderHistoryView(); // Cargar datos al abrir
-    } else {
-      historyPanel.classList.remove('open');
-      historyPanel.setAttribute('aria-hidden', 'true');
-
-      // REQUERIMIENTO: Al cerrar historial, volver a abrir el carrito
-      if (cartPanel) {
-        cartPanel.classList.add('open');
-        cartPanel.setAttribute('aria-hidden', 'false');
-      }
+// Modal de Historial (Reemplazo de Setup)
+function setupHistoryModal() {
+    const modal = document.getElementById('historyModal');
+    const openBtn = document.getElementById('toggleHistoryBtn');
+    const closeBtn = document.getElementById('closeHistoryModalBtn');
+    const refreshBtn = document.getElementById('refreshHistoryBtn');
+    const body = document.getElementById('historyModalBody');
+  
+    if(openBtn) {
+        openBtn.onclick = (e) => {
+            e.preventDefault();
+            if(modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('active'); // Asegurar visibilidad con clase active si se usa
+                renderHistoryContent();
+            }
+        };
     }
-  }
+  
+    if(closeBtn && modal) {
+        closeBtn.onclick = () => {
+            modal.classList.add('hidden');
+            modal.classList.remove('active');
+        };
+    }
 
-  // Event Listeners
-  historyHandle.onclick = () => toggleHistory();
-  document.getElementById('closeHistoryBtn').onclick = () => toggleHistory(false);
+    if(refreshBtn) {
+        refreshBtn.onclick = () => renderHistoryContent();
+    }
+  
+    // Close on outside click is handled by CSS overlay usually, but adding JS support
+    if(modal) {
+        modal.onclick = (e) => {
+            if(e.target === modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('active');
+            }
+        };
+    }
+  
+    async function renderHistoryContent() {
+        if(!body) return;
+        body.innerHTML = `<div class="empty-state" style="text-align:center; padding: 20px; color: #888;">
+            <i class="fas fa-spinner fa-spin fa-2x"></i><p>Cargando historial...</p>
+        </div>`;
+        
+        try {
+            // Fetch real data
+            const res = await fetch('../api/sales/get_sales.php?limit=20', { method: 'GET' });
+            // Check session/json validity
+            const contentType = res.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new Error("Respuesta no válida del servidor");
+            }
 
-  // Observador para mostrar/ocultar el botón de historial según el estado del carrito
-  // Usamos MutationObserver para detectar cambios en la clase 'open' del cartPanel
-  if (cartPanel) {
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-          const isCartOpen = cartPanel.classList.contains('open');
-          const isHistoryOpen = historyPanel.classList.contains('open');
+            const data = await res.json();
+            
+            if(!data.success || !data.data || data.data.length === 0) {
+                 body.innerHTML = `<div class="empty-state" style="text-align:center; padding: 20px; color: #888;">
+                    <i class="fas fa-history fa-2x"></i><p>No hay ventas recientes.</p>
+                 </div>`;
+                 return;
+            }
+  
+            body.innerHTML = data.data.map(sale => {
+                const total = parseFloat(sale.total).toFixed(2);
+                const date = new Date(sale.sale_date).toLocaleString();
+                const payMethod = sale.payment_method === 'cash' ? 'Efectivo' : 
+                                 sale.payment_method === 'card' ? 'Tarjeta' : 
+                                 sale.payment_method === 'transfer' ? 'Transferencia' : 'Mixto';
 
-          // Mostrar botón si el carrito está abierto O si el historial está abierto
-          if (isCartOpen || isHistoryOpen) {
-            historyHandle.style.transform = 'translateX(0)';
-          } else {
-            // Ocultar botón si ambos están cerrados
-            historyHandle.style.transform = 'translateX(120%)';
-          }
+                return `
+                <div class="history-card" style="border-left: 4px solid var(--primary-color); padding: 12px; margin-bottom: 10px; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                    <div class="history-card-header" style="display: flex; justify-content: space-between; margin-bottom: 6px; border-bottom: 1px dashed #eee; padding-bottom: 6px;">
+                        <span class="h-id" style="font-weight: bold;">#${sale.sale_id}</span>
+                        <span class="h-date" style="font-size: 0.85rem; color: #888;">${date}</span>
+                    </div>
+                    <div class="history-card-body" style="font-size: 0.9rem; color: #555;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Items: <strong>${sale.total_items || '?'}</strong></span>
+                            <span>Pago: <strong>${payMethod}</strong></span>
+                        </div>
+                    </div>
+                    <div class="history-card-footer" style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center;">
+                        <div class="h-total-price" style="font-size: 1.1rem; font-weight: bold; color: #333;">$${total}</div>
+                        <button class="btn-reprint" onclick="viewSaleDetails(${sale.sale_id})" style="background: #f0f0f0; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;"><i class="fas fa-eye"></i> Ver</button>
+                    </div>
+                </div>
+            `}).join('');
+  
+        } catch (e) {
+            console.error("Error loading history", e);
+            body.innerHTML = `<div class="empty-state" style="text-align:center; padding: 20px; color: firebrick;">
+                <i class="fas fa-exclamation-triangle"></i><p>Error al cargar historial.</p>
+            </div>`;
         }
-      });
-    });
-    observer.observe(cartPanel, { attributes: true });
-    // También observar el panel de historial para mantener el botón visible
-    const historyObserver = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-          const isCartOpen = cartPanel.classList.contains('open');
-          const isHistoryOpen = historyPanel.classList.contains('open');
-
-          if (isCartOpen || isHistoryOpen) {
-            historyHandle.style.transform = 'translateX(0)';
-          } else {
-            historyHandle.style.transform = 'translateX(120%)';
-          }
-        }
-      });
-    });
-    historyObserver.observe(historyPanel, { attributes: true });
-  }
-
-  // Estilos CSS extra
-  const style = document.createElement('style');
-  style.textContent = `
-        .history-item-card {
-            background: #fff;
-            border: 1px solid #eee;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-            transition: transform 0.2s;
-        }
-        .history-item-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
-        .h-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; color: #555; }
-        .h-id { font-weight: bold; color: #333; }
-        .h-details { font-size: 0.85rem; color: #777; margin-bottom: 8px; display: flex; justify-content: space-between; }
-        .h-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #eee; padding-top: 8px; }
-        .h-total { font-size: 1.1rem; font-weight: bold; color: var(--primary-color, #2e7d32); }
-        .btn-reprint { background: #f0f0f0; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; color: #333; }
-        .btn-reprint:hover { background: #e0e0e0; }
-    `;
-  document.head.appendChild(style);
+    }
 }
+
+// Función global para ver detalles (placeholder por ahora)
+window.viewSaleDetails = function(id) {
+    alert("Pronto: Detalles de venta #" + id);
+    // Aquí se podríá implementar otro modal o redirección
+};
+
 
 function renderHistoryView() {
   const container = document.getElementById('historyPanelBody');
@@ -1333,7 +1497,7 @@ async function loadCategoriesAndProducts() {
       fetch('../api/inventory/products.php')
     ]);
 
-    if (!await checkSessionStatus(catRes) || !await checkSessionStatus(prodRes)) return;
+    if (!catRes.ok || !prodRes.ok) return; // Simple check
 
     const catData = await catRes.json();
     const prodData = await prodRes.json();
@@ -1341,25 +1505,71 @@ async function loadCategoriesAndProducts() {
     if (catData.success) {
       allCategories = catData.data || [];
     }
-    if (prodData.success) {
-      allProducts = prodData.data || [];
+    
+    // Si la respuesta de productos es un array directo o tiene propiedad data
+    if (Array.isArray(prodData)) {
+         allProducts = prodData;
+    } else if (prodData.success) {
+         allProducts = prodData.data || [];
+    } else {
+         allProducts = [];
     }
 
-    renderCategoryBar();
-    renderGallery(getFilteredProducts());
+    // Poblar Select de Categorías
+    const catSelect = document.getElementById('categoryFilter');
+    if (catSelect) {
+        // Mantener la opción "Todas" y agregar las demás
+        catSelect.innerHTML = '<option value="all">Todas las categorías</option>';
+        allCategories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat.category_id;
+            opt.textContent = cat.name;
+            catSelect.appendChild(opt);
+        });
+    }
 
-    // Bind interactions
-    // bindCategoryDrag(); // Deshabilitado por problemas de UX en escritorio
-    bindGallerySwipe();
+    filterAndRenderProducts(); // Render inicial
   } catch (e) {
-    console.error(e);
+    console.error('Error loading data:', e);
   }
 }
 
-function getFilteredProducts() {
-  if (!activeCategoryId) return allProducts;
-  return allProducts.filter(p => String(p.category_id || '') === String(activeCategoryId));
+function filterAndRenderProducts() {
+    let filtered = allProducts;
+
+    // 1. Filtro de Categoría
+    if (activeCategoryId && activeCategoryId !== 'all') {
+        filtered = filtered.filter(p => String(p.category_id || '') === String(activeCategoryId));
+    }
+
+    // 2. Ordenamiento
+    const sortVal = document.getElementById('sortFilter') ? document.getElementById('sortFilter').value : 'default';
+    
+    // Crear copia para no mutar original
+    filtered = [...filtered];
+
+    switch(sortVal) {
+        case 'price_asc':
+            filtered.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+            break;
+        case 'price_desc':
+            filtered.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+            break;
+        case 'name_asc':
+            filtered.sort((a, b) => a.product_name.localeCompare(b.product_name));
+            break;
+        case 'newest':
+            // Asumiendo que IDs más altos son más nuevos si no hay fecha
+            filtered.sort((a, b) => b.product_id - a.product_id); 
+            break;
+        default:
+            // "Relevancia" o Default (por ID o nombre original)
+            break;
+    }
+
+    renderGallery(filtered);
 }
+
 
 function calculatePromoPrice(product) {
   if (!ACTIVE_PROMOTIONS || ACTIVE_PROMOTIONS.length === 0) return null;
@@ -1402,13 +1612,17 @@ function renderGallery(list, animate = false) {
 
   // Limpiar clases de animación CSS antiguas
   productGallery.classList.remove('slide-in-left', 'slide-in-right');
+  
+  // Asegurar que searchResults esté oculto si mostramos galería
+  if (searchResults) searchResults.classList.add('hidden');
+  productGallery.style.display = 'grid';
 
   if (!list || list.length === 0) {
-    productGallery.innerHTML = '<div class="empty-cart" style="grid-column: 1/-1;">No hay productos para esta categoría</div>';
+    productGallery.innerHTML = '<div class="empty-state" style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;"><i class="fas fa-search" style="font-size: 2rem; margin-bottom: 10px;"></i><p>No se encontraron productos</p></div>';
     return;
   }
 
-  // Renderizar items (ocultos si se va a animar)
+  // Renderizar items con estructura optimizada
   productGallery.innerHTML = list.map(p => {
     const imagePath = getRelativeImagePath(p.image_path);
     const promoPrice = calculatePromoPrice(p);
@@ -1417,175 +1631,68 @@ function renderGallery(list, animate = false) {
     let priceHtml = '';
     if (hasPromo) {
          priceHtml = `
-            <span class="original-price" style="text-decoration: line-through; font-size: 0.8em; color: #999; margin-right: 5px;">${formatCurrency(p.price)}</span>
+            <span class="original-price" style="text-decoration: line-through; font-size: 0.8em; color: #999;">${formatCurrency(p.price)}</span>
             <span class="promo-price" style="color: #dc3545; font-weight: bold;">${formatCurrency(promoPrice)}</span>
          `;
     } else {
-         priceHtml = formatCurrency(p.price);
+         priceHtml = `<span class="current-price">${formatCurrency(p.price)}</span>`;
     }
 
-    return `<div class="gallery-item" data-id="${p.product_id}" data-price="${p.price}" data-stock="${p.stock_quantity !== undefined ? p.stock_quantity : ''}" data-image="${p.image_path || ''}" data-is_bulk="${p.is_bulk || 0}" data-bulk_unit="${p.bulk_unit || 'kg'}" title="${escapeHtml(p.product_name)}" style="opacity: ${animate ? 0 : 1};">
+    const stockBadge = (p.stock_quantity !== undefined && p.stock_quantity !== null && p.stock_quantity !== '') 
+          ? `<div class="stock-badge ${p.stock_quantity < 5 ? 'low' : ''}">${p.stock_quantity}</div>` 
+          : '';
+
+    return `
+      <div class="gallery-item" 
+           data-id="${p.product_id}" 
+           data-price="${p.price}" 
+           data-stock="${p.stock_quantity !== undefined ? p.stock_quantity : ''}" 
+           data-image="${p.image_path || ''}" 
+           data-is_bulk="${p.is_bulk || 0}" 
+           data-bulk_unit="${p.bulk_unit || 'kg'}" 
+           title="${escapeHtml(p.product_name)}">
+           
         <div class="img-wrap">
-            ${imagePath ? `<img src="${imagePath}" alt="img" onerror="this.outerHTML='<span class=\\'no-img\\'>Sin imagen</span>'">` : '<span class="no-img">Sin imagen</span>'}
-            ${hasPromo ? '<div style="position:absolute; top:5px; right:5px; background:#dc3545; color:white; font-size:0.75em; padding:2px 6px; border-radius:4px; font-weight:bold; z-index:2;"><i class="fas fa-tag"></i> Oferta</div>' : ''}
+            ${imagePath ? `<img src="${imagePath}" loading="lazy" alt="${escapeHtml(p.product_name)}" onerror="this.parentNode.innerHTML='<i class=\\'fas fa-box\\'></i>'">` : '<i class="fas fa-box" style="color:#eee; font-size:1.5rem;"></i>'}
+            ${stockBadge}
         </div>
-        <div class="g-name">${escapeHtml(p.product_name)}</div>
-        <div class="g-price">${priceHtml}</div>
-      </div>`;
+        
+        <div class="item-details" style="padding: 8px; display: flex; flex-direction: column; flex: 1; justify-content: space-between;">
+            <h4 style="margin: 0 0 4px 0; font-size: 0.95rem; color: #333; font-weight: 600;">${escapeHtml(p.product_name)}</h4>
+            <div class="price-area" style="font-weight: 700; color: var(--primary-color);">
+                ${priceHtml}
+            </div>
+        </div>
+      </div>
+    `;
   }).join('');
 
+  // Re-attach events
   Array.from(productGallery.querySelectorAll('.gallery-item')).forEach(el => {
-    el.addEventListener('click', () => {
-      if (isCatDragging) return; // evita clics fantasma tras arrastrar barra
-      el.classList.add('item-added-feedback');
-      setTimeout(() => el.classList.remove('item-added-feedback'), 500);
+      el.addEventListener('click', () => {
+        // Feedback visual
+        const img = el.querySelector('.img-wrap');
+        if(img) {
+            img.style.transform = 'scale(0.95)';
+            setTimeout(() => img.style.transform = '', 150);
+        }
 
-      addProductToCart({
-        product_id: parseInt(el.getAttribute('data-id')),
-        product_name: el.querySelector('.g-name').textContent,
-        unit_price: parseFloat(el.getAttribute('data-price')),
-        image_path: el.getAttribute('data-image'),
-        stock_quantity: parseInt(el.getAttribute('data-stock')),
-        is_bulk: parseInt(el.getAttribute('data-is_bulk')) || 0,
-        bulk_unit: el.getAttribute('data-bulk_unit') || 'kg'
+        addProductToCart({
+          product_id: parseInt(el.getAttribute('data-id')),
+          product_name: el.querySelector('h4').textContent,
+          unit_price: parseFloat(el.getAttribute('data-price')),
+          image_path: el.getAttribute('data-image'),
+          stock_quantity: el.getAttribute('data-stock'),
+          is_bulk: parseInt(el.getAttribute('data-is_bulk')) || 0,
+          bulk_unit: el.getAttribute('data-bulk_unit') || 'kg'
+        });
       });
-    });
-  });
-
-  // Ejecutar animación de entrada con anime.js
-  if (animate && typeof anime !== 'undefined') {
-    anime({
-      targets: '.gallery-item',
-      opacity: [0, 1],
-      translateY: [20, 0],
-      scale: [0.95, 1],
-      delay: anime.stagger(40), // Retraso escalonado entre elementos
-      duration: 400,
-      easing: 'easeOutQuad'
-    });
-  }
-}
-
-function renderCategoryBar() {
-  if (!categoryBar) return;
-  const pills = [{ category_id: null, category_name: 'Todos', icon_class: 'fa-border-all' }, ...allCategories];
-  categoryBar.innerHTML = pills.map(cat => `
-    <button class="category-pill ${(!activeCategoryId && cat.category_id === null) || (String(activeCategoryId) === String(cat.category_id)) ? 'active' : ''}" data-id="${cat.category_id === null ? '' : cat.category_id}">
-      <i class="fas ${cat.icon_class || 'fa-tag'}"></i>
-      <span class="cat-label">${escapeHtml(cat.category_name)}</span>
-    </button>
-  `).join('');
-
-  Array.from(categoryBar.querySelectorAll('.category-pill')).forEach(el => {
-    el.addEventListener('click', () => {
-      // if (isCatDragging) return; // Deshabilitado check de drag
-      const id = el.getAttribute('data-id');
-      const newId = id ? id : null;
-
-      // Determinar dirección para animación
-      let direction = 'next';
-      const currentIdx = getCategoryIndex(activeCategoryId);
-      const newIdx = getCategoryIndex(newId);
-
-      if (newIdx < currentIdx) direction = 'prev';
-
-      setActiveCategory(newId, direction);
-      el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    });
   });
 }
 
-function getCategoryIndex(id) {
-  // null es index 0
-  if (id === null) return 0;
-  // Buscar en allCategories
-  const idx = allCategories.findIndex(c => String(c.category_id) === String(id));
-  return idx === -1 ? 0 : idx + 1; // +1 porque 'Todos' es 0
-}
 
-function setActiveCategory(id, direction = 'none') {
-  // Si es la misma categoría, no hacer nada
-  if (String(activeCategoryId) === String(id)) return;
 
-  const updateState = () => {
-    activeCategoryId = id;
-    renderCategoryBar();
-    renderGallery(getFilteredProducts(), true);
-    scrollToActiveCategoryPill();
-  };
-
-  // Si hay items y anime.js está disponible, animar salida
-  const currentItems = document.querySelectorAll('.gallery-item');
-  if (typeof anime !== 'undefined' && currentItems.length > 0) {
-    anime({
-      targets: '.gallery-item',
-      opacity: [1, 0],
-      scale: [1, 0.9],
-      duration: 150,
-      easing: 'easeInQuad',
-      complete: updateState
-    });
-  } else {
-    updateState();
-  }
-}
-
-function bindGallerySwipe() {
-  if (!productGallery || productGallery.dataset.swipeBound === '1') return;
-  productGallery.dataset.swipeBound = '1';
-
-  let touchStartX = 0;
-  let touchEndX = 0;
-  const minSwipeDistance = 50;
-
-  productGallery.addEventListener('touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
-  }, { passive: true });
-
-  productGallery.addEventListener('touchend', e => {
-    touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
-  }, { passive: true });
-
-  function handleSwipe() {
-    const distance = touchEndX - touchStartX;
-
-    if (Math.abs(distance) < minSwipeDistance) return;
-
-    const currentIdx = getCategoryIndex(activeCategoryId);
-    const totalCats = allCategories.length + 1; // +1 por 'Todos'
-
-    if (distance < 0) {
-      // Swipe Left -> Next Category
-      if (currentIdx < totalCats - 1) {
-        const nextIdx = currentIdx + 1;
-        const nextId = nextIdx === 0 ? null : allCategories[nextIdx - 1].category_id;
-        setActiveCategory(nextId, 'next');
-      }
-    } else {
-      // Swipe Right -> Prev Category
-      if (currentIdx > 0) {
-        const prevIdx = currentIdx - 1;
-        const prevId = prevIdx === 0 ? null : allCategories[prevIdx - 1].category_id;
-        setActiveCategory(prevId, 'prev');
-      }
-    }
-  }
-}
-
-function scrollToActiveCategoryPill() {
-  setTimeout(() => {
-    const activePill = categoryBar.querySelector('.category-pill.active');
-    if (activePill) {
-      activePill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    }
-  }, 50);
-}
-
-function bindCategoryDrag() {
-  // Función deshabilitada para simplificar la interacción y evitar conflictos con clics
-  return;
-}
+// Funciones de barra de categorías obsoletas eliminadas durante refactorización.
 
 // Funcionalidad de escáner
 async function fetchByCode(code) {
@@ -1964,7 +2071,7 @@ function injectMoneyPanelStyles() {
             box-shadow: 0 4px 20px rgba(0,0,0,0.15);
             border-radius: 8px;
             padding: 15px;
-            z-index: 2000;
+            z-index: 9999;
         }
         
         .money-panel-overlay {

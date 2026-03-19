@@ -1,8 +1,23 @@
 <?php
+require_once '../../config/constants.php';
+require_once '../../config/database.php';
+require_once '../../includes/Database.class.php';
+require_once '../../includes/Auth.class.php';
 require_once '../../includes/Response.class.php';
 require_once 'config.php';
 
 header('Content-Type: application/json');
+
+// Verificar sesión y permisos
+$db = new Database();
+$auth = new Auth($db);
+
+if (!$auth->isLoggedIn()) {
+    Response::error('No autorizado', 401);
+}
+
+// Restricción: Herramientas de IA solo para Premium
+$auth->requirePremium();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     Response::error('Método no permitido', 405);

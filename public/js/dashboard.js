@@ -192,7 +192,7 @@ function renderRecentSalesList(list) {
                 </div>
             </td>
             <td style="padding: 0.75rem; font-weight: bold;" data-label="Total">${formatCurrency(item.total)}</td>
-            <td style="padding: 0.75rem; color: #27ae60; font-weight: bold;" data-label="Ganancia">${formatCurrency(item.profit)}</td>
+            <td class="premium-locked" style="padding: 0.75rem; color: #27ae60; font-weight: bold;" data-label="Ganancia">${formatCurrency(item.profit)}</td>
         `;
         tbody.appendChild(tr);
     });

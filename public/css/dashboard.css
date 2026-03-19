@@ -477,3 +477,58 @@ select.form-control {
     outline: none;
     box-shadow: 0 0 0 3px var(--primary-shadow);
 }
+
+/* =========================================
+   PREMIUM FEATURES STYLING
+   ========================================= */
+
+/* Ocultar elementos premium para usuarios Free */
+body.plan-free .premium-only {
+    display: none !important;
+}
+
+/* Mostrar marcador de Premium para elementos bloqueados */
+body.plan-free .premium-locked {
+    position: relative;
+    pointer-events: none; /* Prevenir clicks */
+    opacity: 0.7; /* Desvanecer elemento */
+    filter: grayscale(100%);
+}
+
+body.plan-free .premium-locked::after {
+    content: "PREMIUM";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #333;
+    color: #f7d794; /* Gold variant */
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    z-index: 10;
+    pointer-events: none;
+}
+
+/* Estilo específico para botones bloqueados */
+body.plan-free button.premium-locked,
+body.plan-free a.premium-locked.btn {
+    color: transparent !important; /* Ocultar texto original */
+}
+
+body.plan-free button.premium-locked::after,
+body.plan-free a.premium-locked.btn::after {
+    content: "\f023"; /* FontAwesome Lock Icon */
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    color: #555;
+    background: none;
+    box-shadow: none;
+    font-size: 1.2rem;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}

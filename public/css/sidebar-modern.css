@@ -1,0 +1,201 @@
+:root {
+    --sidebar-desktop-width: 250px;
+    --sidebar-collapsed-width: 80px;
+    --sidebar-gap: 16px;
+    --sidebar-hover-bg: rgba(255, 255, 255, 0.1);
+    --sidebar-border-radius: 12px;
+}
+
+/* Base style for existing elements inside Sidebar */
+/* MOVED: Override generic span rule inside media query to preserve mobile */
+
+/* Hide desktop toggle on mobile/tablet */
+.sidebar-desktop-toggle {
+    display: none;
+}
+
+/* Floating Sidebar Logic - Desktop Only */
+@media (min-width: 1025px) {
+    /* Override generic span rule from main.css that affects both icon and text spans */
+    .nav-item span {
+        font-size: 1rem; /* Reset to normal size for text */
+        margin-right: 0; /* Reset generic margin */
+    }
+
+    /* Specific styles for new structure */
+    .nav-icon {
+        font-size: 1.2rem; /* Icon size */
+        min-width: 24px;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        margin-right: 10px; /* Space between icon and text */
+    }
+
+    .nav-text {
+        transition: opacity 0.3s ease;
+        white-space: nowrap;
+        font-family: 'Nunito', sans-serif; /* Ensure correct font */
+    }
+
+    /* Main Content Adjustment */
+    .main-content {
+        margin-left: calc(var(--sidebar-desktop-width) + (var(--sidebar-gap) * 2)) !important;
+        margin-right: var(--sidebar-gap);
+        margin-top: var(--sidebar-gap);
+        border-radius: var(--sidebar-border-radius);
+        transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        padding: 30px 40px !important; /* Increased padding */
+        min-height: calc(100vh - (var(--sidebar-gap) * 2));
+    }
+
+    /* Sidebar Floating Style */
+    .sidebar {
+        /* Override existing */
+        position: fixed !important;
+        width: var(--sidebar-desktop-width) !important;
+        height: calc(100vh - (var(--sidebar-gap) * 2)) !important;
+        top: var(--sidebar-gap) !important;
+        left: var(--sidebar-gap) !important;
+        
+        display: flex;
+        flex-direction: column;
+        
+        /* Glassmorphism / Modern style */
+        background: var(--dark-color, #2c3e50); /* Fallback */
+        border-radius: var(--sidebar-border-radius);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.05); /* Subtle border */
+        
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+        z-index: 1300;
+    }
+
+    .sidebar-header {
+        display: flex;
+        align-items: center;
+        padding: 0 24px; /* More padding, removed vertical padding to center with height */
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        height: 70px; /* Fixed header height */
+        justify-content: flex-start; /* Left align */
+    }
+
+    .sidebar-header h2 {
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transition: opacity 0.3s;
+        font-size: 1.25rem; /* Better size */
+    }
+
+    .sidebar-nav {
+        flex: 1; /* Take remaining height */
+        overflow-y: auto;
+        padding: 10px 0;
+    }
+    
+    /* Override .nav-item to ensure proper spacing in desktop mode */
+    .nav-item {
+        padding: 12px 24px;
+        margin: 0 10px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+    }
+
+    .nav-icon {
+        margin-right: 12px;
+        font-size: 1.1rem;
+        width: 24px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    /* Desktop Toggle Button */
+    .sidebar-desktop-toggle {
+        display: flex; /* Active only on desktop */
+        background: none;
+        border: none;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 1.2rem;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 8px;
+        margin-right: 12px;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .sidebar-desktop-toggle:hover {
+        background: var(--sidebar-hover-bg);
+        color: #fff;
+    }
+
+    /* ----- Collapsed State ----- */
+    body.sidebar-collapsed .sidebar {
+        width: var(--sidebar-collapsed-width) !important;
+    }
+
+    body.sidebar-collapsed .main-content {
+        margin-left: calc(var(--sidebar-collapsed-width) + (var(--sidebar-gap) * 2)) !important;
+    }
+
+    /* Hiding Text */
+    body.sidebar-collapsed .nav-text,
+    body.sidebar-collapsed .sidebar-header h2 {
+        display: none;
+        opacity: 0;
+    }
+
+    /* Centering Icons */
+    body.sidebar-collapsed .nav-item {
+        justify-content: center;
+        padding: 15px 0;
+    }
+
+    body.sidebar-collapsed .nav-icon {
+        margin: 0;
+        font-size: 1.2rem;
+    }
+
+    body.sidebar-collapsed .sidebar-header {
+        justify-content: center;
+        padding: 20px 0;
+    }
+
+    body.sidebar-collapsed .sidebar-desktop-toggle {
+        margin: 0;
+    }
+
+    /* Profile Section Adjustments when Collapsed */
+    body.sidebar-collapsed .profile-nav-group span.profile-icon-container {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+    }
+    
+    body.sidebar-collapsed .nav-profile-img {
+        width: 32px;
+        height: 32px;
+        margin: 0;
+    }
+    
+    /* Hide Separator / extra items */
+    body.sidebar-collapsed .nav-separator {
+        display: none;
+    }
+    
+    /* Tooltip adjustments for collapsed */
+    body.sidebar-collapsed .profile-nav-group:hover .user-tooltip-menu {
+        left: var(--sidebar-collapsed-width); /* Show right of collapsed bar */
+        bottom: 20px; /* Adjust as needed */
+        top: auto;
+        width: 200px;
+    }
+}

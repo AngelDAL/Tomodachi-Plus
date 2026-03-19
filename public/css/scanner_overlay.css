@@ -1,35 +1,174 @@
 /* ==========================================================================
-   MEJORAS ESCÁNER (Brillo y Guías)
+   MEJORAS ESCÁNER (Versión Consolidada)
    ========================================================================== */
 
-/* Contenedor relativo para posicionar guías */
+/* Contenedor relativo para posicionar guías y elementos internos */
 #scannerContainer {
     position: relative;
-    background: #000; /* Fondo negro para mejor contraste */
+    background: #000;
     overflow: hidden;
-    border-radius: 16px; /* Bordes más redondeados */
-    
-    /* Layout: Reducido en escritorio, adaptable en móvil */
-    width: 100%;
-    max-width: 500px; /* Ancho máximo tipo móvil */
-    margin: 15px auto; /* Centrado horizontal */
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    /* Por defecto oculto o manejado por JS, aquí definimos estructura base */
+    display: flex;
+    flex-direction: column;
+    z-index: 100; /* Asegurar que esté por encima de elementos normales */
 }
 
-/* Ajuste de brillo y contraste para el video */
-#qr-reader video {
-    filter: brightness(1.1) contrast(1.1);
-    /* object-fit: cover; ELIMINADO: Causa distorsión con aspectRatio 1.0 */
-    border-radius: 16px;
+/* Botón de cierre interno (Integrado en el video) */
+.scanner-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px; /* Alineado a la derecha como solicitado */
+    z-index: 200; /* Por encima del video */
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5); /* Fondo oscuro semitransparente */
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.scanner-close-btn:hover {
+    background: rgba(255, 59, 48, 0.8); /* Rojo brillante al pasar mouse */
+    border-color: #ff3b30;
+    transform: scale(1.1);
+}
+
+.scanner-close-btn:active {
+    transform: scale(0.95);
 }
 
 /* 
-   La librería Html5Qrcode inserta su propio canvas/elementos para el qrbox si se configura.
-   Aseguramos que el contenedor permita verlos correctamente.
+   Ajuste visual del video 
+   (Importante: html5-qrcode a veces inserta estilos inline que debemos vencer)
 */
-#qr-reader__scan_region {
-    /* Estilo para el borde que la librería podría generar */
-    border: 2px solid rgba(255, 255, 255, 0.8) !important;
-    box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5); /* Efecto viñeta nativo si la librería usa este ID */
-    border-radius: 12px;
+#qr-reader video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    border-radius: 0;
+}
+
+
+/* --- LÓGICA RESPONSIVA DEL MODO ESCÁNER --- */
+
+/* 1. MÓVIL (Pantallas < 900px) */
+@media (max-width: 900px) {
+    /* MODO ACTIVO: Inmersivo total */
+    body.scanner-active {
+        overflow: hidden; /* Evitar scroll en body */
+    }
+
+    /* El contenedor del escáner se vuelve fijo en la parte superior */
+    body.scanner-active #scannerContainer {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 60vh; /* 60% de la pantalla */
+        border-radius: 0;
+        margin: 0;
+        z-index: 99999; /* Máxima prioridad, tapa header y todo */
+        box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+    }
+
+    /* Ocultar elementos que podrían estorbar visualmente */
+    body.scanner-active .mobile-view-controls,
+    body.scanner-active .pos-header,
+    body.scanner-active .sidebar-overlay {
+        display: none !important;
+    }
+
+    /* Forzar que el botón de cerrar flotante externo NO se vea (usamos el interno) */
+    #closeScannerOverlayBtn {
+        display: none !important;
+    }
+
+    /* Asegurar que el botón interno sea grande y tocable */
+    body.scanner-active .scanner-close-btn {
+        display: flex;
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
+
+    /* MANEJO DEL CARRITO DEBAJO DEL ESCÁNER */
+    body.scanner-active .pos-content-grid {
+        display: block !important; /* Romper el grid/flex normal */
+        height: 100%;
+        padding-top: 60vh; /* Empujar contenido hacia abajo */
+        background: white;
+    }
+
+    /* Forzar visibilidad y posición de la columna del carrito */
+    body.scanner-active .cart-column {
+        display: flex !important;
+        transform: none !important; /* Anular slide animation */
+        opacity: 1 !important;
+        width: 100% !important;
+        height: 100% !important; /* Llenar el resto (40vh efectivos aprox) */
+        z-index: 50;
+        position: relative;
+    }
+
+    /* FIX: Product column must remain visible for fixed scanner to render */
+    body.scanner-active .products-column {
+        display: flex !important;
+        transform: none !important; /* Remove transforms so fixed works */
+        width: 0 !important;
+        height: 0 !important;
+        overflow: visible !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        position: static !important;
+    }
+
+    /* Ocultar hermanos del scanner explícitamente */
+    body.scanner-active .product-search-container,
+    body.scanner-active .product-filters,
+    body.scanner-active .gallery-main,
+    body.scanner-active #searchResults {
+        display: none !important;
+    }
+}
+
+
+/* 2. ESCRITORIO (Pantallas > 901px) */
+@media (min-width: 901px) {
+    /* El scanner vive dentro de .products-column, reemplazando la galería */
+    
+    /* Cuando activo, el contenedor ocupa todo el espacio disponible */
+    body.scanner-active #scannerContainer {
+        width: 100%;
+        flex: 1; /* Crecer para llenar columna */
+        height: 100%;
+        min-height: 500px; /* Altura mínima decente */
+        border-radius: 12px;
+        margin-bottom: 20px;
+    }
+
+    /* Ocultar galería y búsqueda cuando escáner activo */
+    body.scanner-active .gallery-main,
+    body.scanner-active .product-search-container,
+    body.scanner-active .product-filters {
+        display: none !important;
+    }
+
+    /* El botón flotante externo siempre oculto en desktop */
+    #closeScannerOverlayBtn {
+        display: none !important;
+    }
+    
+    /* Ajuste para que el video no se recorte mal en landscape */
+    body.scanner-active #qr-reader video {
+        object-fit: contain !important;
+        background: #111;
+    }
 }

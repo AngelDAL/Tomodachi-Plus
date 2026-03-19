@@ -25,7 +25,7 @@ try {
     $date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
 
     $params=[];
-    $sql='SELECT sale_id, store_id, user_id, register_id, sale_date, total, status, payment_method FROM sales WHERE DATE(sale_date) = ?';
+    $sql='SELECT s.sale_id, s.store_id, s.user_id, s.register_id, s.sale_date, s.total, s.status, s.payment_method, (SELECT COALESCE(SUM(quantity), 0) FROM sale_details sd WHERE sd.sale_id = s.sale_id) as total_items FROM sales s WHERE DATE(s.sale_date) = ?';
     $params[]=$date;
     if ($store_id>0) { $sql.=' AND store_id = ?'; $params[]=$store_id; }
     $sql.=' ORDER BY sale_date DESC LIMIT 200';

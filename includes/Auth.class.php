@@ -45,7 +45,7 @@ class Auth {
      * @return array|false Datos del usuario o false
      */
     public function login($username, $password) {
-        $sql = "SELECT u.user_id, u.username, u.password_hash, u.full_name, u.email, u.role, u.store_id, u.status, u.show_onboarding, s.logo_url, s.store_name 
+        $sql = "SELECT u.user_id, u.username, u.password_hash, u.full_name, u.email, u.role, u.store_id, u.status, u.show_onboarding, s.logo_url, s.store_name, s.subscription_plan 
                 FROM users u
                 LEFT JOIN stores s ON u.store_id = s.store_id
                 WHERE u.username = ? AND u.status = ?";
@@ -61,6 +61,7 @@ class Auth {
             $_SESSION['store_id'] = $user['store_id'];
             $_SESSION['logo_url'] = $user['logo_url'];
             $_SESSION['store_name'] = $user['store_name'];
+            $_SESSION['subscription_plan'] = $user['subscription_plan'] ?? PLAN_FREE;
             $_SESSION['show_onboarding'] = (bool)$user['show_onboarding'];
             $_SESSION['logged_in'] = true;
             
@@ -155,5 +156,33 @@ class Auth {
      */
     public static function verifyPassword($password, $hash) {
         return password_verify($password, $hash);
+    }
+
+    /**
+     * Obtener plan de suscripción actual
+     * @return string
+     */
+    public function getSubscriptionPlan() {
+        return $_SESSION['subscription_plan'] ?? PLAN_FREE;
+    }
+
+    /**
+     * Verificar si la tienda es Premium
+     * @return bool
+     */
+    public function isPremium() {
+        return $this->getSubscriptionPlan() === PLAN_PREMIUM;
+    }
+
+    /**
+     * Verifica si se requiere acceso Premium y detiene la ejecución si no lo tiene.
+     * Útil para proteger endpoints API.
+     */
+    public function requirePremium() {
+        if (!$this->isPremium()) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Esta función requiere un plan Premium.']);
+            exit;
+        }
     }
 }

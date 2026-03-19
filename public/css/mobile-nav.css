@@ -1,0 +1,201 @@
+
+/* -------------------------------- */
+/* Mobile Bottom Navigation Layout  */
+/* -------------------------------- */
+@media (max-width: 1024px) {
+    /* Main Content - Make space for bottom nav */
+    .main-content {
+        margin-left: 0 !important;
+        margin-bottom: 70px !important; /* Space for nav */
+        padding-bottom: 20px !important;
+    }
+
+    /* Transform Sidebar into Bottom Nav */
+    .sidebar {
+        /* Reset positioning */
+        position: fixed !important;
+        top: auto !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        
+        /* Box Model */
+        width: 100% !important;
+        height: auto !important; /* Dynamic height */
+        min-height: 60px;
+        max-height: 70px;
+        
+        /* Flex Layout */
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: center; /* Center items */
+        align-items: center;
+        
+        /* Visuals */
+        background: var(--dark-color, #2c3e50) !important;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+        border-radius: 16px 16px 0 0; /* Rounded top corners */
+        padding: 0 5px;
+        z-index: 9999;
+        overflow-x: hidden; /* Prevent horizontal scroll unless necessary */
+    }
+
+    /* Hide Desktop Header Elements */
+    .sidebar-header {
+        display: none !important;
+    }
+
+    /* Navigation Container */
+    .sidebar-nav {
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        justify-content: space-around; /* Distribute items evenly */
+        align-items: center;
+        padding: 0;
+        margin: 0;
+        overflow-x: auto; /* Allow scroll if items overflow on very small screens */
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Hide Scrollbar for cleaner look */
+    .sidebar-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Navigation Items Style */
+    .nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 2px;
+        margin: 0;
+        text-decoration: none;
+        color: rgba(255, 255, 255, 0.7);
+        flex: 1; /* Equal width */
+        min-width: 50px; /* Minimum tappable width */
+        flex-shrink: 1; /* Allow shrinking */
+        overflow: hidden;
+    }
+
+    /* Active State Highlight */
+    .nav-item.active {
+        color: #fff;
+        background: transparent; /* Remove sidebar background */
+    }
+    
+    .nav-item.active .nav-icon {
+        background: rgba(255, 255, 255, 0.2); /* Highlight icon only */
+        border-radius: 50%;
+    }
+
+    /* Icons */
+    .nav-icon {
+        font-size: 1.1rem; /* Slightly smaller */
+        margin-right: 0 !important; /* Reset desktop margin */
+        margin-bottom: 2px;
+        width: 32px; /* Smaller touch target visual */
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%; /* Circle background for active state */
+        transition: background 0.2s;
+    }
+    
+    /* Text Labels */
+    .nav-text {
+        font-size: 0.6rem !important; /* Smaller text */
+        margin-left: 0 !important;
+        opacity: 1 !important; /* Always show text */
+        display: block; /* Ensure visibility */
+        text-align: center;
+        line-height: 1.1;
+        white-space: nowrap; /* Prevent wrapping */
+        overflow: hidden;
+        text-overflow: ellipsis; /* Dot dot dot if too long */
+        max-width: 100%;
+        padding: 0 2px;
+    }
+
+    /* Items to Hide on Mobile */
+    .desktop-only-nav,
+    .nav-separator,
+    #supportBtn,
+    #logoutBtn {
+        display: none !important;
+    }
+
+    /* Profile Section Handling */
+    .profile-nav-group {
+        display: flex;
+        flex: 1;
+        justify-content: center;
+        margin: 0;
+    }
+    
+    /* Adjust Profile Link inside group */
+    .profile-nav-group .nav-item {
+        padding: 6px 2px;
+        width: 100%;
+    }
+
+    /* Profile Image Adjustment */
+    .nav-profile-img {
+        width: 28px !important;
+        height: 28px !important;
+        margin-right: 0 !important;
+        border: 2px solid white; 
+    }
+    
+    .profile-icon-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 2px;
+    }
+
+    /* Tooltip Position Fix for Bottom Nav */
+    .user-tooltip-menu {
+        position: fixed !important;
+        bottom: 80px !important; /* Show above the bar */
+        width: calc(100% - 20px) !important;
+        left: 10px !important;
+        right: 10px !important;
+        top: auto !important;
+        transform: translateY(20px);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 10000;
+        
+        display: block !important; /* Force display context */
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        padding: 5px 0;
+    }
+
+    /* Active Tooltip */
+    .user-tooltip-menu.show {
+        transform: translateY(0);
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .tooltip-item {
+        padding: 12px 20px;
+        font-size: 1rem;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .tooltip-item:last-child {
+        border-bottom: none;
+    }
+
+    
+    /* Override existing styles that might conflict */
+    .nav-item span {
+        margin-right: 0 !important;
+    }
+}

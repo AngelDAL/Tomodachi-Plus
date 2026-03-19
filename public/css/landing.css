@@ -389,36 +389,49 @@ h3 { font-size: 1.5rem; margin-bottom: 1rem; }
 }
 
 .screenshot-item {
-    border-radius: 12px;
+    border-radius: 20px;
     overflow: hidden;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.05);
     background: white;
-    transition: transform 0.3s ease;
-    cursor: pointer;
+    transition: all 0.3s ease;
+    cursor: default;
     position: relative;
+    border: 1px solid rgba(0,0,0,0.03);
+    top: 0;
 }
 
 .screenshot-item:hover {
-    transform: scale(1.03);
-    z-index: 10;
+    transform: translateY(-10px);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.1);
 }
 
 .screenshot-placeholder {
     width: 100%;
-    height: 250px;
-    background-color: #eee;
+    height: 220px;
+    background-color: #f8f9fa;
     background-size: cover;
-    background-position: center;
+    background-position: center top;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-bottom: 1px solid rgba(0,0,0,0.03);
 }
 
-.screenshot-caption {
-    padding: 20px;
-    background: white;
-    text-align: center;
-    font-weight: 600;
+.screenshot-content {
+    padding: 30px;
+}
+
+.screenshot-content h3 {
+    font-size: 1.4rem;
+    margin-bottom: 10px;
+    color: var(--text-color);
+}
+
+.screenshot-content p {
+    color: #666;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin: 0;
 }
 
 /* CTA Section */
@@ -663,4 +676,93 @@ h3 { font-size: 1.5rem; margin-bottom: 1rem; }
 .geo-shape.small { width: 40px; height: 40px; stroke-width: 2; }
 .geo-shape.medium { width: 80px; height: 80px; stroke-width: 3; }
 .geo-shape.large { width: 150px; height: 150px; stroke-width: 4; opacity: 0.08; }
+
+/* Pricing Section */
+.pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 400px));
+    justify-content: center;
+    gap: 40px;
+    margin-top: 50px;
+}
+
+.pricing-card {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+    position: relative;
+    border: 1px solid rgba(0,0,0,0.05);
+    transition: transform 0.3s ease;
+}
+
+.pricing-card:hover {
+    transform: translateY(-10px);
+}
+
+.pricing-card.popular {
+    border: 2px solid var(--primary-color);
+    box-shadow: 0 20px 60px rgba(227, 5, 122, 0.15);
+}
+
+.pricing-card .badge {
+    position: absolute;
+    top: -15px;
+    right: 30px;
+    background: var(--primary-color);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 5px 15px rgba(227, 5, 122, 0.3);
+}
+
+.plan-header {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 20px;
+}
+
+.plan-header h3 {
+    font-size: 1.8rem;
+    margin-bottom: 10px;
+    color: var(--text-color);
+}
+
+.plan-header .price {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--primary-color);
+}
+
+.plan-header .price span {
+    font-size: 1rem;
+    color: #999;
+    font-weight: 500;
+}
+
+.plan-features {
+    margin-bottom: 30px;
+}
+
+.plan-features li {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    color: #555;
+}
+
+.plan-features li i {
+    color: var(--primary-color);
+    margin-right: 10px;
+    font-size: 1.1rem;
+}
+
+.pricing-card .btn {
+    width: 100%;
+    text-align: center;
+    box-sizing: border-box;
+}
 

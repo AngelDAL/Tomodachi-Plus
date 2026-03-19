@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="css/sales.css">
     <link rel="stylesheet" href="css/scanner_overlay.css">
     <link rel="stylesheet" href="css/bulk_sales.css">
+    <link rel="stylesheet" href="css/cart_responsive.css">
     <script src="js/theme-init.js"></script>
 </head>
 
@@ -29,205 +30,199 @@
                 <h2>Tomodachi</h2>
             </div>
             <nav class="sidebar-nav">
-                <a href="dashboard.html" class="nav-item">
-                    <span><i class="fas fa-chart-line"></i></span> Dashboard
-                </a>
-                <a href="sales.html" class="nav-item active">
-                    <span><i class="fas fa-cash-register"></i></span> Punto de Venta
-                </a>
-                <a href="inventory.html" class="nav-item">
-                    <span><i class="fas fa-box"></i></span> Inventario
-                </a>
-                <a href="promotions.html" class="nav-item">
-                    <span><i class="fas fa-tags"></i></span> Promociones
-                </a>
-                <a href="finance.html" class="nav-item">
-                    <span><i class="fas fa-wallet"></i></span> Finanzas
-                </a>
-                <a href="reports.html" class="nav-item desktop-only-nav">
-                    <span><i class="fas fa-chart-bar"></i></span> Reportes
-                </a>
-
-                <div class="nav-group profile-nav-group">
-                    <a href="profile.html" class="nav-item" id="profileMenuBtn">
-                        <span class="profile-icon-container">
-                            <img src="assets/images/default-logo.png" alt="Store" class="nav-profile-img"
-                                id="navStoreLogo"
-                                onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block'">
-                            <i class="fas fa-circle-user" style="display:none; font-size: 1.5rem;"></i>
-                        </span>
-                        <span class="nav-text">Mi Perfil</span>
-                    </a>
-
-                    <div class="user-tooltip-menu" id="profileTooltipMenu">
-                        <a href="profile.html" class="tooltip-item">
-                            <i class="fas fa-cog"></i> Configuración
-                        </a>
-                        <a href="reports.html" class="tooltip-item">
-                            <i class="fas fa-chart-bar"></i> Reportes
-                        </a>
-                        <a href="#" class="tooltip-item js-support-btn">
-                            <i class="fas fa-headset"></i> Soporte
-                        </a>
-                        <a href="#" class="tooltip-item" onclick="logout(); return false;">
-                            <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
-                        </a>
-                    </div>
-                </div>
-                <a href="#" class="nav-item" id="logoutBtn">
-                    <span><i class="fas fa-sign-out-alt"></i></span> Cerrar Sesión
-                </a>
-
-                <div class="nav-separator" style="margin: 10px 0; border-top: 1px solid rgba(255,255,255,0.1);"></div>
-
-                <a href="#" class="nav-item desktop-only-nav js-support-btn" id="supportBtn"
-                    style="color: #aaa; font-size: 0.9em;">
-                    <span><i class="fas fa-headset"></i></span> Soporte / Sugerencias
-                </a>
+                <!-- Navigation Loaded by js/sidebar-loader.js -->
             </nav>
         </aside>
 
         <!-- Main Content -->
         <main class="main-content">
             <div class="pos-container">
-                <!-- Encabezado con búsqueda -->
-                <div class="pos-header">
-                    <div class="search-section">
-                        <input type="text" id="searchInput" placeholder="Buscar producto..." autocomplete="off"
-                            aria-label="Buscar producto" class="search-main">
-                        <button id="toggleScannerBtn" type="button" class="btn-scanner" aria-label="Escáner"
-                            title="Activar escáner"><i class="fas fa-barcode"></i></button>
-                        <button id="toggleScaleBtn" type="button" class="btn-scale" aria-label="Conectar balanza"
-                            title="Conectar balanza"><i class="fas fa-weight-hanging"></i></button>
-                        <button id="toggleCustomerDisplayBtn" type="button" class="btn-customer-display" aria-label="Pantalla de Cliente"
-                            title="Abrir Pantalla de Cliente"><i class="fas fa-tv"></i></button>
-                        <!-- Voice control removed per request -->
+                <!-- Scanner Container removed from here -->
+
+                <!-- Componentes Utilitarios (Visibillidad condicional) -->
+                <div id="scaleStatusIndicator" class="scale-status-indicator hidden">
+                    <i class="fas fa-balance-scale"></i>
+                    <span id="scaleStatus">Desconectado</span>
+                    <span id="scaleWeight" style="display: none;">(<span id="scaleWeightValue">--.--</span> <span id="scaleWeightUnit">kg</span>)</span>
+                </div>
+
+                <!-- Main POS Grid Layout -->
+                <div class="pos-content-grid">
+                    <!-- Mobile View Switcher -->
+                    <div class="mobile-view-controls">
+                        <button class="view-switch-btn active" data-target="products-column">
+                            <i class="fas fa-th"></i> Productos
+                        </button>
+                        <button class="view-switch-btn" data-target="cart-column">
+                            <i class="fas fa-shopping-cart"></i> Carrito
+                            <span id="mobileCartCount" class="badge-count hidden">0</span>
+                        </button>
                     </div>
 
-                    <!-- Scale Status Indicator -->
-                    <div id="scaleStatusIndicator" class="scale-status-indicator">
-                        <i class="fas fa-balance-scale"></i>
-                        <span id="scaleStatus">Desconectado</span>
-                        <span id="scaleWeight" style="display: none;">(<span id="scaleWeightValue">--.--</span> <span id="scaleWeightUnit">kg</span>)</span>
-                    </div>
+                    <!-- Botón Flotante (Eliminado/Oculto porque usamos el interno) -->
+                    <button id="closeScannerOverlayBtn" title="Cerrar Escáner" class="hidden" style="display:none;">
+                        <i class="fas fa-times"></i>
+                    </button>
 
-                    <!-- Checkout Header (Movido desde abajo) -->
-                    <div class="cart-footer checkout-header">
-                        <div class="checkout-group" role="group" aria-label="Resumen y pago">
-                            <div class="checkout-item total-item" aria-label="Total a pagar">
-                                <div class="checkout-label"><i class="fas fa-sack-dollar"
-                                        aria-hidden="true"></i><span>Total</span></div>
-                                <span id="totalBadge" class="checkout-value total-value" aria-live="polite">$0.00</span>
-                            </div>
-
-                            <!-- Agrupación de Pago -->
-                            <div class="pay-action-row">
-                                <div class="checkout-item received-item" aria-label="Monto recibido">
-                                    <div class="checkout-label">Recibido</div>
-                                    <input type="number" id="checkoutReceived" min="0" step="0.01" value=""
-                                        class="checkout-input" placeholder="$">
-                                </div>
-                                <button id="finalizeSaleBtn" class="btn-finalize-sale btn-primary" disabled title="Cobrar ahora"
-                                    aria-label="Finalizar venta">
-                                    <i class="fas fa-check-circle"></i><span class="btn-text">COBRAR</span>
+                    <!-- Products Column -->
+                    <div class="products-column active" id="productsColumn">
+                        <!-- Search Bar Moved Here -->
+                        <div class="product-search-container">
+                            <div class="search-wrapper">
+                                <i class="fas fa-search search-icon"></i>
+                                <input type="text" id="searchInput" placeholder="Buscar producto..." autocomplete="off"
+                                    aria-label="Buscar producto" class="search-main rounded-search">
+                                
+                                <button id="toggleScannerBtn" type="button" class="scanner-btn-circle" title="Activar escáner">
+                                    <i class="fas fa-barcode"></i>
                                 </button>
-                            </div>
-
-                            <div class="checkout-item change-item" aria-label="Cambio a entregar">
-                                <div class="checkout-label">Cambio:</div>
-                                <span id="checkoutChange" class="checkout-value change-value" aria-live="polite">$0.00</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="scannerContainer" class="scanner-container hidden">
-                        <div id="qr-reader" style="width:100%;"></div>
-                    </div>
-                </div>
-
-                <!-- Galería de productos principal -->
-                <div class="products-main">
-                    <div class="category-bar" id="categoryBar" aria-label="Categorías de productos"></div>
-                    <div id="searchResults" class="search-results hidden"></div>
-                    <div id="productGallery" class="gallery-main"></div>
-                </div>
-
-                <!-- Footer fijo inferior: checkout (ELIMINADO) -->
-
-                <!-- Asa y panel lateral del carrito (oculto por defecto) -->
-                <button id="cartHandle" class="cart-handle" aria-label="Abrir carrito">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span id="cartCountBadge" class="cart-badge" style="display: none;">0</span>
-                </button>
-                <aside class="cart-side-panel" id="cartPanel" aria-label="Carrito de compras" aria-hidden="true">
-                    <div class="cart-side-header">
-                        <h2>Carrito</h2>
-                        <button class="close-cart" id="closeCartBtn" aria-label="Cerrar carrito"><i
-                                class="fas fa-times"></i></button>
-                    </div>
-                    <div class="cart-tabs">
-                        <button class="panel-tab-btn active" data-tab="products">
-                            <span><i class="fas fa-shopping-bag"></i></span> Productos
-                        </button>
-                        <button class="panel-tab-btn" data-tab="adjustments">
-                            <span><i class="fas fa-cog"></i></span> Ajustes
-                        </button>
-                    </div>
-                    <!-- Tab: Productos -->
-                    <div class="cart-tab-content active" id="tab-products">
-                        <div class="cart-items">
-                            <table class="cart-table">
-                                <thead>
-                                    <tr>
-                                        <th>Info</th> <!-- Cambiado para incluir img + nombre -->
-                                        <th>Precio</th>
-                                        <th>Cant.</th>
-                                        <th>Acciones</th> <!-- Espacio para editar y borrar -->
-                                    </tr>
-                                </thead>
-                                <tbody id="cartBody"></tbody>
-                            </table>
-                            <div class="empty-cart" id="emptyCartMsg">Sin productos</div>
-                        </div>
-                    </div>
-                    <!-- Tab: Ajustes -->
-                    <div class="cart-tab-content" id="tab-adjustments">
-                        <div class="adjustments-section">
-                            <div class="adjustments-row" style="display: none;">
-                                <div class="adjustment-item">
-                                    <label>Descuento:</label>
-                                    <input type="number" id="discountInput" min="0" step="0.01" value="0"
-                                        placeholder="0.00" class="compact-input">
-                                </div>
-                                <div class="adjustment-item">
-                                    <label>Impuesto:</label>
-                                    <input type="number" id="taxInput" min="0" step="0.01" value="0" placeholder="0.00"
-                                        class="compact-input">
+                                
+                                <!-- Nuevo Botón de Configuración Circular -->
+                                <div class="config-menu-wrapper">
+                                    <button id="configMenuBtn" type="button" class="config-btn-circle" title="Configuración">
+                                        <i class="fas fa-cog"></i>
+                                    </button>
+                                    
+                                    <!-- Menú Desplegable -->
+                                    <div id="configDropdown" class="config-dropdown-menu hidden">
+                                        <div class="dropdown-header">Herramientas</div>
+                                        <button id="toggleScaleBtn" class="dropdown-item">
+                                            <i class="fas fa-weight-hanging"></i> <span>Conectar Balanza</span>
+                                        </button>
+                                        <button id="toggleCustomerDisplayBtn" class="dropdown-item">
+                                            <i class="fas fa-tv"></i> <span>Pantalla Cliente</span>
+                                        </button>
+                                        <button id="toggleHistoryBtn" class="dropdown-item">
+                                            <i class="fas fa-history"></i> <span>Historial de Ventas</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="payment-section">
-                                <label>Método de pago:</label>
-                                <select id="paymentMethod" aria-label="Método de pago">
-                                    <option value="cash">Efectivo</option>
-                                    <option value="card">Tarjeta</option>
-                                    <option value="transfer">Transferencia</option>
-                                    <option value="mixed">Mixto</option>
+                        </div>
+
+                        <!-- Scanner Area (Moved Inside Column, Replaces Gallery) -->
+                        <div id="scannerContainer" class="scanner-container hidden">
+                            <button id="closeScannerContainerBtn" class="scanner-close-btn" title="Cerrar Escáner">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <div id="qr-reader" style="width:100%;"></div>
+                        </div>
+
+                        <!-- Filtros (Anteriormente Category Bar) -->
+                        <div class="product-filters" id="productFilters">
+                            <div class="filter-group">
+                                <label for="categoryFilter" class="sr-only">Categoría</label>
+                                <select id="categoryFilter" class="filter-select">
+                                    <option value="all">Todas las categorías</option>
+                                    <!-- Options populated by JS -->
                                 </select>
                             </div>
-                            <div class="print-ticket-option"
-                                style="margin-top: 15px; display: flex; align-items: center; gap: 10px;">
-                                <input type="checkbox" id="printTicketCheckbox" style="width: auto; margin: 0;">
-                                <label for="printTicketCheckbox"
-                                    style="margin: 0; font-size: 0.9rem; cursor: pointer;">Imprimir ticket al
-                                    finalizar</label>
+                            <div class="filter-group">
+                                <label for="sortFilter" class="sr-only">Ordenar por</label>
+                                <select id="sortFilter" class="filter-select">
+                                    <option value="default">Relevancia</option>
+                                    <option value="price_asc">Precio: Menor a Mayor</option>
+                                    <option value="price_desc">Precio: Mayor a Menor</option>
+                                    <option value="name_asc">Nombre: A-Z</option>
+                                    <option value="newest">Recién Agregados</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div id="searchResults" class="search-results hidden"></div>
+                        <div id="productGallery" class="gallery-main"></div>
+                    </div>
+
+                    <!-- Cart Column -->
+                    <div class="cart-column" id="cartColumn">
+                        <div class="cart-panel-inner">
+                            <div class="cart-tabs">
+                                <button class="panel-tab-btn active" data-tab="products">
+                                    <span><i class="fas fa-shopping-bag"></i></span> Items
+                                </button>
+                                <button class="panel-tab-btn" data-tab="adjustments">
+                                    <span><i class="fas fa-cog"></i></span> Ajustes
+                                </button>
+                            </div>
+                            <!-- Tab: Productos -->
+                            <div class="cart-tab-content active" id="tab-products">
+                                <div class="cart-items-container" id="cartItemsContainer">
+                                    <!-- Lista de items renderizada com divs -->
+                                    <div id="cartBody" class="cart-list"></div>
+
+                                    <div class="empty-cart" id="emptyCartMsg">
+                                        <i class="fas fa-shopping-basket"></i>
+                                        <p>Tu carrito está vacío</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Tab: Ajustes -->
+                            <div class="cart-tab-content" id="tab-adjustments">
+                                <div class="adjustments-section">
+                                    <div class="print-ticket-option">
+                                        <input type="checkbox" id="printTicketCheckbox">
+                                        <label for="printTicketCheckbox">Imprimir ticket</label>
+                                    </div>
+                                    
+                                    <div class="adjustment-group">
+                                        <label>Método de pago</label>
+                                        <select id="paymentMethod" class="form-select">
+                                            <option value="cash">Efectivo</option>
+                                            <option value="card">Tarjeta</option>
+                                            <option value="transfer">Transferencia</option>
+                                            <option value="mixed">Mixto</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="adjustment-row">
+                                        <div class="adj-item">
+                                            <label>Descuento</label>
+                                            <input type="number" id="discountInput" min="0" step="0.01" placeholder="0.00">
+                                        </div>
+                                        <div class="adj-item">
+                                            <label>Impuesto</label>
+                                            <input type="number" id="taxInput" min="0" step="0.01" placeholder="0.00">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="cart-summary-footer" id="cartFooter">
+                                <div class="footer-static-content">
+                                    <div class="summary-details">
+                                        <div class="summary-row">
+                                            <span>Subtotal</span>
+                                            <span id="cartSubtotal">$0.00</span>
+                                        </div>
+                                        <!-- Espacio para Impuestos/Descuentos si se muestran -->
+                                        <div class="summary-row total-row">
+                                            <span>Total</span>
+                                            <strong id="panelTotal">$0.00</strong>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="checkout-actions">
+                                        <div class="payment-control-group">
+                                            <div class="input-wrapper">
+                                                <span class="currency-symbol">$</span>
+                                                <input type="number" id="checkoutReceived" min="0" step="0.01" placeholder="Monto recibido" class="pay-input">
+                                            </div>
+                                            <div class="change-display">
+                                                <small>Cambio</small>
+                                                <span id="checkoutChange">$0.00</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <button id="finalizeSaleBtn" class="btn-checkout-primary" disabled>
+                                            <span class="btn-label">COBRAR</span>
+                                            <i class="fas fa-arrow-right"></i>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="cart-side-footer">
-                        <span>Total</span>
-                        <strong id="panelTotal">$0.00</strong>
-                    </div>
-                </aside>
+                </div>
             </div>
         </main>
     </div>
@@ -296,8 +291,28 @@
         </div>
     </div>
 
+    <!-- Modal para Historial de Ventas (Agregado) -->
+    <div id="historyModal" class="modal-overlay hidden">
+        <div class="modal-content history-modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-history"></i> Historial de Ventas</h3>
+                <button class="modal-close" id="closeHistoryModalBtn"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="historyModalBody" class="modal-body history-body-scroll">
+                <!-- Se llenará dinámicamente con JS -->
+                <div class="empty-state">
+                    <i class="fas fa-spinner fa-spin"></i> Cargando historial...
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="refreshHistoryBtn" class="btn-secondary"><i class="fas fa-sync-alt"></i> Actualizar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Voice overlay removed -->
 
+    <script src="js/sidebar-loader.js"></script>
     <script src="js/app.js"></script>
     <script src="lib/html5-qrcode/html5-qrcode.min.js"></script>
     <script src="js/scanner.js"></script>
@@ -321,15 +336,7 @@
             document.body.setAttribute('data-store-id', session.store_id || 1);
             initPOS();
         });
-        (function () {
-            const logoutEl = document.getElementById('logoutBtn');
-            if (logoutEl) {
-                logoutEl.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    await logout();
-                });
-            }
-        })();
+        // Sidebar Logout handled by sidebar-loader.js
     </script>
 </body>
 
