@@ -299,4 +299,36 @@ class Mail {
             return false;
         }
     }
+
+    public function sendDatabaseBackup($toEmail, $toName, $backupFilePath, $backupFileName) {
+        try {
+            $this->mailer->addAddress($toEmail, $toName);
+            $this->mailer->addAttachment($backupFilePath, $backupFileName);
+            $this->mailer->isHTML(true);
+            $this->mailer->Subject = 'Respaldo de Base de Datos - Tomodachi POS';
+
+            $body = "
+            <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;'>
+                <div style='background-color: #f9f9f9; padding: 20px; border-radius: 5px;'>
+                    <h2 style='color: #E3057A;'>Respaldo de base de datos generado</h2>
+                    <p>Hola {$toName},</p>
+                    <p>Adjunto encontrarás tu respaldo completo de la base de datos.</p>
+                    <p><strong>Archivo:</strong> {$backupFileName}</p>
+                    <p>Te recomendamos almacenarlo en un lugar seguro.</p>
+                    <br>
+                    <p>Saludos,<br>Tomodachi POS</p>
+                </div>
+            </div>
+            ";
+
+            $this->mailer->Body = $body;
+            $this->mailer->AltBody = "Respaldo de base de datos generado. Archivo adjunto: {$backupFileName}";
+
+            $this->mailer->send();
+            return true;
+        } catch (Exception $e) {
+            error_log("Database backup email error: {$this->mailer->ErrorInfo}");
+            return false;
+        }
+    }
 }

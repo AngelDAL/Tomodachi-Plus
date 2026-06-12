@@ -33,6 +33,25 @@
             border-radius: 12px;
             font-size: 0.8rem;
         }
+        .backup-panel {
+            margin-bottom: 20px;
+        }
+        .backup-form {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .backup-form .form-group {
+            margin: 0;
+            flex: 1;
+            min-width: 260px;
+        }
+        .backup-status {
+            margin-top: 12px;
+            font-size: 0.92rem;
+            color: #555;
+        }
     </style>
 </head>
 <body>
@@ -63,6 +82,23 @@
                         <p>Gestión de usuarios y tiendas</p>
                     </div>
                     <div id="adminInfo"></div>
+                </div>
+
+                <div class="list-section backup-panel">
+                    <h3><i class="fas fa-database"></i> Respaldo de Base de Datos</h3>
+                    <p style="margin-bottom: 16px;">
+                        Genera un respaldo completo y guárdalo en el sistema. También se enviará una copia al correo indicado.
+                    </p>
+                    <form id="backupForm" class="backup-form">
+                        <div class="form-group">
+                            <label for="backupEmail">Correo para recibir respaldo</label>
+                            <input type="email" id="backupEmail" class="form-control" placeholder="tu_correo@ejemplo.com" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="generateBackupBtn">
+                            <i class="fas fa-download"></i> Generar Respaldo
+                        </button>
+                    </form>
+                    <div id="backupStatus" class="backup-status"></div>
                 </div>
 
                 <div class="list-section">

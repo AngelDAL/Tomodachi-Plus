@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
     `;
 
+    initBackupModule();
     loadAllUsers();
 
     // Search filter
@@ -30,6 +31,76 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 });
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+async function initBackupModule() {
+    const backupForm = document.getElementById('backupForm');
+    const backupEmailInput = document.getElementById('backupEmail');
+    const backupStatus = document.getElementById('backupStatus');
+    const generateBackupBtn = document.getElementById('generateBackupBtn');
+
+    if (!backupForm || !backupEmailInput || !backupStatus || !generateBackupBtn) {
+        return;
+    }
+
+    try {
+        const profileRes = await fetch('../api/users/profile.php');
+        const profileData = await profileRes.json();
+        if (profileData.success && profileData.data?.email) {
+            backupEmailInput.value = profileData.data.email;
+        }
+    } catch (error) {
+        console.error('No se pudo precargar el correo de respaldo:', error);
+    }
+
+    backupForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const email = backupEmailInput.value.trim();
+        if (!email) {
+            showNotification('Ingresa un correo para enviar el respaldo', 'warning');
+            return;
+        }
+
+        generateBackupBtn.disabled = true;
+        generateBackupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
+
+        try {
+            const response = await fetch('../api/super_admin/create_backup.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showNotification(result.message, result.data.email_sent ? 'success' : 'warning');
+                backupStatus.innerHTML = `
+                    <strong>Último respaldo:</strong> ${escapeHtml(result.data.backup_file)}<br>
+                    <strong>Guardado en:</strong> ${escapeHtml(result.data.backup_path)}<br>
+                    <strong>Correo destino:</strong> ${escapeHtml(result.data.email_to)}
+                `;
+            } else {
+                showNotification(result.message || 'No se pudo generar el respaldo', 'error');
+            }
+        } catch (error) {
+            console.error(error);
+            showNotification('Error de conexión al generar respaldo', 'error');
+        } finally {
+            generateBackupBtn.disabled = false;
+            generateBackupBtn.innerHTML = '<i class="fas fa-download"></i> Generar Respaldo';
+        }
+    });
+}
 
 async function loadAllUsers() {
     try {
