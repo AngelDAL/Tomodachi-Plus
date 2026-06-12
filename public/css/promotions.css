@@ -258,6 +258,7 @@ body.modal-open { overflow: hidden; }
     gap: 0;
     position: relative;
     min-height: 180px;
+    max-height: 220px;
     overflow: hidden;
 }
 .product-item-card:hover {
@@ -665,6 +666,7 @@ body.modal-open { overflow: hidden; }
 
     .product-item-card {
         min-height: 150px;
+        max-height: 180px;
     }
 
     .product-item-img-wrapper {
