@@ -384,6 +384,145 @@
             opacity: 0;
         }
 
+        /* Cart tab badge */
+        .cart-tab-badge {
+            display: inline-block;
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 4px;
+            margin-right: 4px;
+            vertical-align: middle;
+            background: #e0e0e0;
+            color: #666;
+        }
+        .cart-tab-badge.active {
+            background: var(--primary-color);
+            color: white;
+        }
+        .product-item.tab-active {
+            border-left: 3px solid var(--primary-color);
+        }
+        .product-item {
+            border-left: 3px solid transparent;
+        }
+
+        /* Connection status */
+        .conn-status {
+            font-size: 0.8rem;
+            padding: 4px 12px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.8);
+            white-space: nowrap;
+        }
+        .conn-status.connected {
+            background: rgba(76,175,80,0.3);
+            color: #81c784;
+        }
+        .conn-status.disconnected {
+            background: rgba(244,67,54,0.3);
+            color: #ef9a9a;
+        }
+
+        /* QR toggle */
+        .qr-toggle-btn {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        .qr-toggle-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* QR Panel */
+        .qr-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .qr-panel.hidden { display: none; }
+        .qr-panel-content {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+            animation: qrFadeIn 0.3s ease;
+        }
+        @keyframes qrFadeIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .qr-close {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-size: 1.2rem;
+            color: #999;
+            cursor: pointer;
+        }
+        .qr-close:hover { color: #333; }
+        .qr-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .qr-desc {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 16px;
+        }
+        .qr-url-box {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 0.85rem;
+            color: #333;
+            word-break: break-all;
+            margin-bottom: 12px;
+            user-select: all;
+        }
+        .qr-copy-btn {
+            padding: 8px 20px;
+            border: 1px solid var(--primary-color);
+            border-radius: 8px;
+            background: white;
+            color: var(--primary-color);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            margin-bottom: 12px;
+        }
+        .qr-copy-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        .qr-note {
+            font-size: 0.8rem;
+            color: #999;
+        }
+
         /* Responsive */
         @media (max-width: 1000px) {
             .main-content {
@@ -411,6 +550,22 @@
         <div class="logo">
             <img src="assets/images/default-logo.png" alt="Logo" class="logo-img" id="storeLogo" onerror="this.src='assets/images/default-logo.png'">
             <div class="store-name" id="storeName">Tomodachi</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <span class="conn-status" id="connStatus">Conectando...</span>
+            <button class="qr-toggle-btn" id="qrToggleBtn" title="Mostrar código QR para conectar desde otro dispositivo">
+                <i class="fas fa-qrcode"></i>
+            </button>
+        </div>
+    </div>
+    <div class="qr-panel hidden" id="qrPanel">
+        <div class="qr-panel-content">
+            <i class="fas fa-times qr-close" id="qrClose"></i>
+            <div class="qr-title">Conectar pantalla de cliente</div>
+            <p class="qr-desc">Abre este enlace en tu tablet o teléfono:</p>
+            <div class="qr-url-box" id="qrUrlBox"></div>
+            <button class="qr-copy-btn" id="qrCopyBtn"><i class="fas fa-copy"></i> Copiar enlace</button>
+            <div class="qr-note">La pantalla se actualizará automáticamente cuando agregues productos.</div>
         </div>
     </div>
 
@@ -470,10 +625,14 @@
     </div>
 
     <script>
+        // ============================================================
         // Configuración
+        // ============================================================
         const CHANNEL_NAME = 'tomodachi_pos_sync';
         let broadcastChannel = null;
-        let lastUpdate = Date.now();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const SESSION_UUID = urlParams.get('cart');
 
         // Elementos del DOM
         const productsList = document.getElementById('productsList');
@@ -483,51 +642,145 @@
         const discount = document.getElementById('discount');
         const discountRow = document.getElementById('discountRow');
         const total = document.getElementById('total');
+        const connStatus = document.getElementById('connStatus');
+        const qrToggleBtn = document.getElementById('qrToggleBtn');
+        const qrPanel = document.getElementById('qrPanel');
+        const qrClose = document.getElementById('qrClose');
+        const qrUrlBox = document.getElementById('qrUrlBox');
+        const qrCopyBtn = document.getElementById('qrCopyBtn');
 
-        // Inicializar BroadcastChannel
+        // ============================================================
+        // Polling: consulta al servidor cada 2s (tablets, otros dispositivos)
+        // ============================================================
+        let pollTimer = null;
+        let lastJson = '';
+
+        function startPolling() {
+            if (!SESSION_UUID) return;
+            setConnStatus('connecting');
+            pollOnce();
+            pollTimer = setInterval(pollOnce, 2000);
+        }
+
+        function stopPolling() {
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        }
+
+        async function pollOnce() {
+            try {
+                const url = '../api/sales/cart_sync.php?session=' + SESSION_UUID + '&_=' + Date.now();
+                const res = await fetch(url);
+                const json = await res.json();
+                if (json.success && json.data) {
+                    // Hash del contenido real del carrito (product_id + quantity + unit_price)
+                    let contentHash = '0';
+                    if (json.data.cart && json.data.cart.length > 0) {
+                        const parts = json.data.cart.map(i => i.product_id + ':' + i.quantity + ':' + i.unit_price);
+                        contentHash = parts.join('|');
+                    }
+                    if (contentHash !== lastJson) {
+                        lastJson = contentHash;
+                        updateDisplay(json.data.cart || [], json.data.totals || null, json.data.storeInfo || null, json.data.activeTab || null);
+                    }
+                    setConnStatus('connected');
+                } else {
+                    setConnStatus('disconnected');
+                }
+            } catch (e) {
+                setConnStatus('disconnected');
+            }
+        }
+
+        // ============================================================
+        // BroadcastChannel (misma ventana/pestaña — popup del POS)
+        // ============================================================
         function initBroadcastChannel() {
             try {
                 broadcastChannel = new BroadcastChannel(CHANNEL_NAME);
-                
                 broadcastChannel.onmessage = (event) => {
-                    lastUpdate = Date.now();
                     if (event.data.type === 'cart_update') {
-                        updateDisplay(event.data.cart, event.data.totals, event.data.storeInfo);
+                        updateDisplay(event.data.cart, event.data.totals, event.data.storeInfo, event.data.activeTab);
                     }
                 };
-
-                // Solicitar datos iniciales
                 setTimeout(() => {
                     broadcastChannel.postMessage({ type: 'request_data' });
                 }, 500);
-
             } catch (error) {
-                console.error('Error al inicializar BroadcastChannel:', error);
-                // Fallback a localStorage
                 initLocalStorageFallback();
             }
         }
 
-        // Fallback usando localStorage
         function initLocalStorageFallback() {
             window.addEventListener('storage', (e) => {
                 if (e.key === 'tomodachi_customer_display') {
-                    const data = JSON.parse(e.newValue || '{}');
-                    updateDisplay(data.cart, data.totals, data.storeInfo);
-                    lastUpdate = Date.now();
+                    try {
+                        const data = JSON.parse(e.newValue || '{}');
+                        updateDisplay(data.cart, data.totals, data.storeInfo, data.activeTab);
+                    } catch (_) {}
                 }
             });
+            try {
+                const stored = localStorage.getItem('tomodachi_customer_display');
+                if (stored) {
+                    const data = JSON.parse(stored);
+                    updateDisplay(data.cart, data.totals, data.storeInfo, data.activeTab);
+                }
+            } catch (_) {}
+        }
 
-            // Cargar datos iniciales
-            const stored = localStorage.getItem('tomodachi_customer_display');
-            if (stored) {
-                const data = JSON.parse(stored);
-                updateDisplay(data.cart, data.totals, data.storeInfo);
+        // ============================================================
+        // Estado de conexión
+        // ============================================================
+        function setConnStatus(status) {
+            if (!connStatus) return;
+            if (status === 'connected') {
+                connStatus.textContent = 'En vivo';
+                connStatus.className = 'conn-status connected';
+            } else if (status === 'connecting') {
+                connStatus.textContent = 'Conectando...';
+                connStatus.className = 'conn-status';
+            } else {
+                connStatus.textContent = 'Desconectado';
+                connStatus.className = 'conn-status disconnected';
             }
         }
 
-        // Actualizar display con datos del carrito
-        function updateDisplay(cart, totals, storeInfo) {
+        // ============================================================
+        // QR / Link panel
+        // ============================================================
+        function getDisplayUrl() {
+            const base = window.location.origin + '/Tomodachi/public/customer-display.html';
+            return SESSION_UUID ? base + '?cart=' + SESSION_UUID : base;
+        }
+
+        function showQrPanel() {
+            if (!qrPanel || !qrUrlBox) return;
+            qrUrlBox.textContent = getDisplayUrl();
+            qrPanel.classList.remove('hidden');
+        }
+
+        if (qrToggleBtn) qrToggleBtn.addEventListener('click', showQrPanel);
+        if (qrClose) qrClose.addEventListener('click', () => qrPanel.classList.add('hidden'));
+        if (qrPanel) qrPanel.addEventListener('click', (e) => { if (e.target === qrPanel) qrPanel.classList.add('hidden'); });
+        if (qrCopyBtn) {
+            qrCopyBtn.addEventListener('click', () => {
+                const url = getDisplayUrl();
+                navigator.clipboard.writeText(url).then(() => {
+                    qrCopyBtn.textContent = '✓ Copiado';
+                    setTimeout(() => { qrCopyBtn.innerHTML = '<i class="fas fa-copy"></i> Copiar enlace'; }, 2000);
+                }).catch(() => {
+                    qrUrlBox.select();
+                    document.execCommand('copy');
+                });
+            });
+        }
+
+        // ============================================================
+        // Renderizado del carrito
+        // ============================================================
+        function updateDisplay(cart, totals, storeInfo, activeTab) {
+            // Guardar activeTab para usar en renderizado de items
+            window._activeTab = activeTab;
             // Actualizar info de tienda si viene en los datos
             if (storeInfo) {
                 if (storeInfo.name) document.getElementById('storeName').textContent = storeInfo.name;
@@ -654,16 +907,19 @@
                     const imagePath = getRelativeImagePath(item.image_path);
                     const discountPct = hasPromo ? calculateDiscountPercentage(item.original_price, item.unit_price) : 0;
                     
+                    // Mostrar pestaña del carrito si hay multiples
+                    const tabLabel = item.cart_tab ? `<span class="cart-tab-badge ${item.is_active ? 'active' : ''}">#${item.cart_tab}</span>` : '';
+
                     const imgHtml = imagePath 
                         ? `<img src="${imagePath}" alt="" class="product-image" onerror="this.outerHTML='<div class=\\'product-image-icon\\'><i class=\\'fas fa-shopping-basket\\'></i></div>'">`
                         : `<div class="product-image-icon"><i class="fas fa-shopping-basket"></i></div>`;
                     
                     return `
-                    <div class="product-item">
+                    <div class="product-item ${item.is_active ? 'tab-active' : ''}">
                         ${imgHtml}
                         <div class="product-quantity">${formatQuantity(item.quantity)}</div>
                         <div class="product-info">
-                            <div class="product-name">${escapeHtml(item.product_name)}</div>
+                            <div class="product-name">${tabLabel} ${escapeHtml(item.product_name)}</div>
                             <div class="product-unit-price">
                                 ${hasPromo 
                                     ? `<span class="price-original">${formatCurrency(item.original_price)}</span>
@@ -775,9 +1031,15 @@
 
         // Inicializar
         document.addEventListener('DOMContentLoaded', () => {
-            initBroadcastChannel();
             loadStoreLogo();
-            console.log('Pantalla de cliente iniciada');
+
+            // Polling al servidor (tablets, otros dispositivos)
+            startPolling();
+
+            // BroadcastChannel / localStorage (popup misma PC)
+            initBroadcastChannel();
+
+            console.log('Pantalla de cliente iniciada' + (SESSION_UUID ? ' (sesión ' + SESSION_UUID.substring(0,8) + ')' : ''));
             
             // Iniciar Slideshow de Bundles
             setInterval(() => {
@@ -815,9 +1077,8 @@
 
         // Limpiar al cerrar
         window.addEventListener('beforeunload', () => {
-            if (broadcastChannel) {
-                broadcastChannel.close();
-            }
+            if (broadcastChannel) broadcastChannel.close();
+            stopPolling();
         });
     </script>
 </body>

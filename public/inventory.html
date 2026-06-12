@@ -64,13 +64,24 @@
                         </div>
                     </div>
                     
-                    <div style="display: flex; gap: 10px;">
-                        <button type="button" id="manageCategoriesBtn" class="btn-secondary" title="Gestionar Categorías" style="white-space: nowrap;">
-                            <i class="fas fa-tags"></i> Categorías
+                    <div class="action-buttons">
+                        <button type="button" id="manageCategoriesBtn" class="btn-secondary" title="Gestionar Categorías">
+                            <i class="fas fa-tags"></i> <span class="btn-text">Categorías</span>
                         </button>
                         <button type="button" id="addProductBtn" class="btn-add-product" title="Agregar nuevo producto">
-                            <i class="fas fa-plus"></i> Nuevo Producto
+                            <i class="fas fa-plus"></i> <span class="btn-text">Nuevo Producto</span>
                         </button>
+                        
+                        <div class="settings-dropdown-container">
+                            <button type="button" id="viewSettingsBtn" class="btn-secondary" title="Configuración de vista">
+                                <i class="fas fa-cog"></i>
+                            </button>
+                            <div id="viewSettingsDropdown" class="dropdown-menu hidden">
+                                <button type="button" id="toggleViewModeBtn" class="dropdown-item">
+                                    <i class="fas fa-list"></i> Vista de Lista
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="image-upload" style="display: none;">
@@ -97,85 +108,162 @@
     
     <!-- Modal para agregar producto -->
     <div id="addProductModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content add-product-content">
             <div class="modal-header">
                 <h2><i class="fas fa-plus-circle"></i> Agregar Nuevo Producto</h2>
                 <button type="button" class="modal-close" id="closeModalBtn" aria-label="Cerrar">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
+
+            <!-- Tabs -->
+            <div class="add-tabs">
+                <button type="button" class="add-tab active" data-ptab="ptab1">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span>Principal</span>
+                </button>
+                <button type="button" class="add-tab" data-ptab="ptab2">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Detalles</span>
+                </button>
+                <button type="button" class="add-tab" data-ptab="ptab3">
+                    <i class="fas fa-qrcode"></i>
+                    <span>Códigos</span>
+                </button>
+            </div>
             
-            <form id="addProductForm" class="modal-body">
-                <div class="form-group">
-                    <label for="productNameInput">Nombre del Producto <span class="required">*</span></label>
-                    <input type="text" id="productNameInput" name="product_name" placeholder="Ej: Televisor 50 pulgadas" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="productDescInput">Descripción</label>
-                    <textarea id="productDescInput" name="description" placeholder="Describe el producto..." rows="3"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label>Imagen del Producto</label>
-                    <div class="image-input-wrapper" style="display: flex; align-items: center; gap: 15px;">
-                        <label for="addProductImage" class="btn-secondary" style="cursor: pointer; padding: 8px 15px; border-radius: 4px; background: #e0e0e0;">
-                            <i class="fas fa-camera"></i> Seleccionar
-                        </label>
-                        <button type="button" class="btn-secondary premium-only" onclick="openAIModal('add')" style="display: none; padding: 8px 15px; border-radius: 4px; background: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; cursor: pointer;">
-                            <i class="fas fa-wand-magic-sparkles"></i> Crear con IA
-                        </button>
-                        <input type="file" id="addProductImage" accept="image/*" style="display: none;">
-                        <div id="addProductImagePreview" style="width: 50px; height: 50px; border-radius: 4px; overflow: hidden; display: none; border: 1px solid #ddd;">
-                            <img src="" style="width: 100%; height: 100%; object-fit: cover;">
+            <form id="addProductForm" class="modal-body add-modal-body">
+                <!-- TAB 1: Principal -->
+                <div class="add-tab-panel active" id="ptab1">
+                    <div class="add-scroll">
+                        <div class="add-image-zone" id="addImageZone">
+                            <input type="file" id="addProductImage" accept="image/*">
+                            <div class="add-image-placeholder" id="addImagePlaceholder">
+                                <i class="fas fa-camera"></i>
+                                <span>Agregar foto del producto</span>
+                                <small>Toca o arrastra una imagen</small>
+                            </div>
+                            <div id="addProductImagePreview" class="add-image-preview hidden">
+                                <img src="" alt="Vista previa">
+                                <button type="button" class="add-image-remove" id="addImageRemoveBtn" title="Quitar imagen">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
                         </div>
-                        <span id="addProductImageName" style="font-size: 0.9em; color: #666;"></span>
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="productCategoryInput">Categoría</label>
-                        <select id="productCategoryInput" name="category_id">
-                            <option value="">Seleccionar categoría...</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="productSkuInput">SKU/Código</label>
-                        <input type="text" id="productSkuInput" name="sku" placeholder="Ej: SKU12345">
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="productBarcodeInput">Código de Barras</label>
-                        <input type="text" id="productBarcodeInput" name="barcode" placeholder="Escanea o ingresa">
-                    </div>
-                    <div class="form-group">
-                        <label for="productQRInput">Código QR</label>
-                        <input type="text" id="productQRInput" name="qr_code" placeholder="Escanea o ingresa">
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="productCostInput">Costo (Compra)</label>
-                        <input type="number" id="productCostInput" name="cost" placeholder="0.00" step="0.01" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label for="productPriceInput">Precio (Venta) <span class="required">*</span></label>
-                        <input type="number" id="productPriceInput" name="price" placeholder="0.00" step="0.01" min="0" required>
+
+                        <div class="form-group">
+                            <label for="productNameInput">
+                                Nombre del producto <span class="required">*</span>
+                            </label>
+                            <input type="text" id="productNameInput" name="product_name" placeholder="Ej: Televisor 50\"" required>
+                        </div>
+
+                        <div class="add-form-triplet">
+                            <div class="form-group">
+                                <label for="productCostInput">
+                                    <i class="fas fa-dollar-sign"></i> Costo
+                                </label>
+                                <div class="input-prefix">
+                                    <span class="prefix">$</span>
+                                    <input type="number" id="productCostInput" name="cost" placeholder="0.00" step="0.01" min="0">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="productPriceInput">
+                                    <i class="fas fa-tag"></i> Precio venta <span class="required">*</span>
+                                </label>
+                                <div class="input-prefix">
+                                    <span class="prefix">$</span>
+                                    <input type="number" id="productPriceInput" name="price" placeholder="0.00" step="0.01" min="0" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="productStockInput">
+                                    <i class="fas fa-cubes"></i> Stock inicial <span class="required">*</span>
+                                </label>
+                                <input type="number" id="productStockInput" name="stock" placeholder="0" min="0" value="0" required>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="productStockInput">Stock Inicial <span class="required">*</span></label>
-                        <input type="number" id="productStockInput" name="stock" placeholder="0" min="0" value="0" required>
+                <!-- TAB 2: Detalles -->
+                <div class="add-tab-panel" id="ptab2">
+                    <div class="add-scroll">
+                        <div class="form-group">
+                            <label for="productDescInput">
+                                <i class="fas fa-align-left"></i> Descripción
+                            </label>
+                            <textarea id="productDescInput" name="description" placeholder="Describe el producto..." rows="3"></textarea>
+                        </div>
+
+                        <div class="add-form-row">
+                            <div class="form-group">
+                                <label for="productCategoryInput">
+                                    <i class="fas fa-tags"></i> Categoría
+                                </label>
+                                <select id="productCategoryInput" name="category_id">
+                                    <option value="">Seleccionar categoría...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="productMinStockInput">
+                                    <i class="fas fa-exclamation-triangle"></i> Stock mínimo
+                                </label>
+                                <input type="number" id="productMinStockInput" name="min_stock" placeholder="5" min="0" value="5">
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="productMinStockInput">Stock Mínimo</label>
-                        <input type="number" id="productMinStockInput" name="min_stock" placeholder="5" min="0" value="5">
+                </div>
+
+                <!-- TAB 3: Códigos -->
+                <div class="add-tab-panel" id="ptab3">
+                    <div class="add-scroll">
+                        <div class="form-group">
+                            <label for="productSkuInput">
+                                <i class="fas fa-barcode"></i> SKU
+                            </label>
+                            <input type="text" id="productSkuInput" name="sku" placeholder="Ej: SKU12345">
+                        </div>
+
+                        <div class="add-form-row">
+                            <div class="form-group">
+                                <label for="productBarcodeInput">
+                                    <i class="fas fa-qrcode"></i> Código de Barras
+                                </label>
+                                <div class="input-scan-group">
+                                    <input type="text" id="productBarcodeInput" name="barcode" placeholder="Escanea o ingresa">
+                                    <button type="button" class="btn-scan" id="scanBarcodeBtn" title="Escanear código de barras">
+                                        <i class="fas fa-camera"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="productQRInput">
+                                    <i class="fas fa-qrcode"></i> Código QR
+                                </label>
+                                <div class="input-scan-group">
+                                    <input type="text" id="productQRInput" name="qr_code" placeholder="Escanea o ingresa">
+                                    <button type="button" class="btn-scan" id="scanQRBtn" title="Escanear código QR">
+                                        <i class="fas fa-camera"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mini scanner inline -->
+                        <div id="miniScannerContainer" class="mini-scanner hidden">
+                            <div class="mini-scanner-header">
+                                <span id="miniScannerLabel">Escanea el código</span>
+                                <button type="button" class="mini-scanner-close" id="miniScannerClose" title="Cerrar">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div id="miniQrReader" class="mini-qr-reader"></div>
+                            <div class="mini-scanner-footer">
+                                <button type="button" class="btn-cancel btn-sm" id="miniScannerCancel">Cancelar</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -196,163 +284,190 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
+
+            <!-- Tabs -->
+            <div class="drawer-tabs">
+                <button type="button" class="drawer-tab active" data-tab="tab1">
+                    <i class="fas fa-tags"></i>
+                    <span>Precio & Stock</span>
+                </button>
+                <button type="button" class="drawer-tab" data-tab="tab2">
+                    <i class="fas fa-qrcode"></i>
+                    <span>Identificación</span>
+                </button>
+                <button type="button" class="drawer-tab" data-tab="tab3">
+                    <i class="fas fa-gear"></i>
+                    <span>Detalles</span>
+                </button>
+            </div>
             
             <div class="drawer-body">
                 <form id="editProductForm" class="drawer-form">
                     <input type="hidden" id="editProductId" name="product_id">
 
-                    <!-- Tarjeta de Imagen -->
-                    <div class="details-card">
-                        <div class="card-body" style="padding: 0;">
-                            <div class="product-image-container large-preview">
-                                <img id="detailImage" src="" alt="Producto" class="detail-img">
-                                <div class="image-overlay">
-                                    <label for="detailImageInput" class="btn-change-image"><i class="fas fa-camera"></i> Cambiar Imagen</label>
-                                    <button type="button" class="btn-change-image premium-only" onclick="openAIModal('edit')" style="display: none; margin-top: 5px; background: rgba(255,255,255,0.9); color: var(--primary-color); border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: 500;">
-                                        <i class="fas fa-wand-magic-sparkles"></i> Mejorar con IA
-                                    </button>
-                                    <input type="file" id="detailImageInput" accept="image/*" class="hidden">
+                    <!-- TAB 1: Precio y Stock -->
+                    <div class="tab-panel active" id="tab1">
+                        <!-- Tarjeta de Imagen -->
+                        <div class="details-card">
+                            <div class="card-body" style="padding: 0;">
+                                <div class="product-image-container large-preview">
+                                    <img id="detailImage" src="" alt="Producto" class="detail-img">
+                                    <div class="image-overlay">
+                                        <label for="detailImageInput" class="btn-change-image"><i class="fas fa-camera"></i> Cambiar Imagen</label>
+                                        <button type="button" class="btn-change-image premium-only" onclick="openAIModal('edit')" style="display: none; margin-top: 5px; background: rgba(255,255,255,0.9); color: var(--primary-color); border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: 500;">
+                                            <i class="fas fa-wand-magic-sparkles"></i> Mejorar con IA
+                                        </button>
+                                        <input type="file" id="detailImageInput" accept="image/*" class="hidden">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tarjeta Análisis de Ganancia -->
+                        <div class="details-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-chart-line"></i> Análisis de Ganancia</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="profit-grid">
+                                    <div class="profit-item">
+                                        <span class="label">Precio Venta</span>
+                                        <span id="detailPriceDisplay" class="value">$0.00</span>
+                                    </div>
+                                    <div class="profit-item">
+                                        <span class="label">Costo Compra</span>
+                                        <span id="detailCostDisplay" class="value">$0.00</span>
+                                    </div>
+                                    <div class="profit-item highlight">
+                                        <span class="label">Ganancia</span>
+                                        <span id="detailProfitDisplay" class="value profit-positive">$0.00</span>
+                                    </div>
+                                    <div class="profit-item">
+                                        <span class="label">Margen</span>
+                                        <span id="detailMarginDisplay" class="value">0%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tarjeta Precios e Inventario -->
+                        <div class="details-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-tags"></i> Precios e Inventario</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="editProductName">Nombre del Producto</label>
+                                        <input type="text" id="editProductName" name="product_name" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="editProductCost">Costo (Compra)</label>
+                                        <input type="number" id="editProductCost" name="cost" step="0.01" min="0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="editProductPrice">Precio (Venta)</label>
+                                        <input type="number" id="editProductPrice" name="price" step="0.01" min="0" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="editProductStock">Stock Actual</label>
+                                        <input type="number" id="editProductStock" name="current_stock" >
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="editProductMinStock">Stock Mínimo</label>
+                                        <input type="number" id="editProductMinStock" name="min_stock" min="0">
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Tarjeta Análisis de Ganancia -->
-                    <div class="details-card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-chart-line"></i> Análisis de Ganancia</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="profit-grid">
-                                <div class="profit-item">
-                                    <span class="label">Precio Venta</span>
-                                    <span id="detailPriceDisplay" class="value">$0.00</span>
-                                </div>
-                                <div class="profit-item">
-                                    <span class="label">Costo Compra</span>
-                                    <span id="detailCostDisplay" class="value">$0.00</span>
-                                </div>
-                                <div class="profit-item highlight">
-                                    <span class="label">Ganancia</span>
-                                    <span id="detailProfitDisplay" class="value profit-positive">$0.00</span>
-                                </div>
-                                <div class="profit-item">
-                                    <span class="label">Margen</span>
-                                    <span id="detailMarginDisplay" class="value">0%</span>
-                                </div>
+                    <!-- TAB 2: Identificación -->
+                    <div class="tab-panel" id="tab2">
+                        <div class="details-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-barcode"></i> Códigos de Identificación</h3>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Tarjeta Información General -->
-                    <div class="details-card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-info-circle"></i> Información General</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="form-group">
-                                <label for="editProductName">Nombre del Producto</label>
-                                <input type="text" id="editProductName" name="product_name" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="editProductDesc">Descripción</label>
-                                <textarea id="editProductDesc" name="description" rows="2"></textarea>
-                            </div>
-                            
-                            <div class="form-row">
+                            <div class="card-body">
                                 <div class="form-group">
-                                    <label for="editProductCategory">Categoría</label>
-                                    <select id="editProductCategory" name="category_id">
-                                        <option value="">Sin categoría</option>
+                                    <label for="editProductSku">SKU/Código</label>
+                                    <input type="text" id="editProductSku" name="sku" placeholder="Ej: SKU12345">
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="editProductBarcode">Código de Barras</label>
+                                        <input type="text" id="editProductBarcode" name="barcode">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="editProductQR">Código QR</label>
+                                        <input type="text" id="editProductQR" name="qr_code">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: Detalles -->
+                    <div class="tab-panel" id="tab3">
+                        <div class="details-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-info-circle"></i> Información General</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label for="editProductDesc">Descripción</label>
+                                    <textarea id="editProductDesc" name="description" rows="3"></textarea>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="editProductCategory">Categoría</label>
+                                        <select id="editProductCategory" name="category_id">
+                                            <option value="">Sin categoría</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="editProductStatus">Estado</label>
+                                        <select id="editProductStatus" name="status">
+                                            <option value="active">Activo</option>
+                                            <option value="inactive">Inactivo</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="details-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-weight-hanging"></i> Venta a Granel</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="editProductIsBulk" name="is_bulk" value="1">
+                                        <span>Este producto se vende a granel (por peso/volumen)</span>
+                                    </label>
+                                    <small class="form-hint">Si activas esta opción, el precio representa el costo por unidad de medida (ej: $/kg)</small>
+                                </div>
+                                <div class="form-group" id="bulkUnitGroup" style="display: none;">
+                                    <label for="editProductBulkUnit">Unidad de Medida</label>
+                                    <select id="editProductBulkUnit" name="bulk_unit">
+                                        <option value="kg">Kilogramos (kg)</option>
+                                        <option value="g">Gramos (g)</option>
+                                        <option value="L">Litros (L)</option>
+                                        <option value="mL">Mililitros (mL)</option>
+                                        <option value="lb">Libras (lb)</option>
+                                        <option value="oz">Onzas (oz)</option>
+                                        <option value="pza">Piezas (pza)</option>
+                                        <option value="m">Metros (m)</option>
                                     </select>
+                                    <small class="form-hint">Ejemplo: Si seleccionas "kg" y el precio es $50, significa $50 por kilogramo</small>
                                 </div>
-                                <div class="form-group">
-                                    <label for="editProductStatus">Estado</label>
-                                    <select id="editProductStatus" name="status">
-                                        <option value="active">Activo</option>
-                                        <option value="inactive">Inactivo</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Tarjeta Códigos -->
-                    <div class="details-card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-barcode"></i> Códigos de Identificación</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="editProductBarcode">Código de Barras</label>
-                                    <input type="text" id="editProductBarcode" name="barcode">
-                                </div>
-                                <div class="form-group">
-                                    <label for="editProductQR">Código QR</label>
-                                    <input type="text" id="editProductQR" name="qr_code">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Tarjeta Precios e Inventario -->
-                    <div class="details-card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-tags"></i> Precios e Inventario</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="editProductCost">Costo (Compra)</label>
-                                    <input type="number" id="editProductCost" name="cost" step="0.01" min="0">
-                                </div>
-                                <div class="form-group">
-                                    <label for="editProductPrice">Precio (Venta)</label>
-                                    <input type="number" id="editProductPrice" name="price" step="0.01" min="0" required>
-                                </div>
-                            </div>
-                            
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="editProductStock">Stock Actual</label>
-                                    <input type="number" id="editProductStock" name="current_stock" >
-                                </div>
-                                <div class="form-group">
-                                    <label for="editProductMinStock">Stock Mínimo</label>
-                                    <input type="number" id="editProductMinStock" name="min_stock" min="0">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Tarjeta Venta a Granel -->
-                    <div class="details-card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-weight-hanging"></i> Venta a Granel</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="form-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="editProductIsBulk" name="is_bulk" value="1">
-                                    <span>Este producto se vende a granel (por peso/volumen)</span>
-                                </label>
-                                <small class="form-hint">Si activas esta opción, el precio representa el costo por unidad de medida (ej: $/kg)</small>
-                            </div>
-                            <div class="form-group" id="bulkUnitGroup" style="display: none;">
-                                <label for="editProductBulkUnit">Unidad de Medida</label>
-                                <select id="editProductBulkUnit" name="bulk_unit">
-                                    <option value="kg">Kilogramos (kg)</option>
-                                    <option value="g">Gramos (g)</option>
-                                    <option value="L">Litros (L)</option>
-                                    <option value="mL">Mililitros (mL)</option>
-                                    <option value="lb">Libras (lb)</option>
-                                    <option value="oz">Onzas (oz)</option>
-                                    <option value="pza">Piezas (pza)</option>
-                                    <option value="m">Metros (m)</option>
-                                </select>
-                                <small class="form-hint">Ejemplo: Si seleccionas "kg" y el precio es $50, significa $50 por kilogramo</small>
                             </div>
                         </div>
                     </div>

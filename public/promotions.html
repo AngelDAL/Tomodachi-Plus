@@ -35,6 +35,11 @@
                 <div id="promotionsList">
                     <!-- Cargando... -->
                 </div>
+                <div class="pagination-bar" id="promoPagination">
+                    <button type="button" class="page-btn" id="prevPageBtn" disabled><i class="fas fa-chevron-left"></i></button>
+                    <div class="page-numbers" id="pageNumbers"></div>
+                    <button type="button" class="page-btn" id="nextPageBtn"><i class="fas fa-chevron-right"></i></button>
+                </div>
             </div>
         </main>
     </div>
@@ -227,7 +232,134 @@
         </div>
     </div>
 
-    <!-- Toast Container (if needed for specific positioning, though existing css/js might handle body append) -->
+    <!-- Drawer móvil para promociones (reemplaza modal en ≤768px) -->
+    <div id="promoDrawer" class="drawer-overlay">
+        <div class="drawer-content">
+            <div class="drawer-header">
+                <h2 id="promoDrawerTitle"><i class="fas fa-tags"></i> Nueva Promoción</h2>
+                <button type="button" class="drawer-close" id="closePromoDrawerBtn" aria-label="Cerrar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="drawer-tabs" id="promoDrawerTabs">
+                <button type="button" class="drawer-tab active" data-dtab="dtab1">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Información</span>
+                </button>
+                <button type="button" class="drawer-tab" data-dtab="dtab2">
+                    <i class="fas fa-box"></i>
+                    <span>Productos</span>
+                </button>
+            </div>
+            <div class="drawer-body">
+                <form id="promoFormDrawer">
+                    <div class="tab-panel active" id="dtab1">
+                        <div class="drawer-scroll">
+                            <div class="form-group">
+                                <label>Nombre de la Promoción</label>
+                                <div class="input-icon-wrapper">
+                                    <i class="fas fa-heading"></i>
+                                    <input type="text" name="name" required class="form-control" placeholder="Ej. Oferta de Verano">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Fecha Inicio</label>
+                                    <div class="input-icon-wrapper">
+                                        <i class="fas fa-calendar-alt"></i>
+                                        <input type="datetime-local" name="start_date" required class="form-control">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Fecha Fin</label>
+                                    <div class="input-icon-wrapper">
+                                        <i class="fas fa-calendar-check"></i>
+                                        <input type="datetime-local" name="end_date" required class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Tipo de Promoción</label>
+                                <div class="input-icon-wrapper">
+                                    <i class="fas fa-list-ul"></i>
+                                    <select name="type" class="form-control drawer-promo-type" onchange="updateDrawerFields()">
+                                        <option value="simple_discount">Descuento Simple</option>
+                                        <option value="bulk_discount">Descuento por Volumen</option>
+                                        <option value="bill_discount">Descuento en Total</option>
+                                        <option value="bundle">Paquete (Bundle)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row" id="drawerDiscountFields">
+                                <div class="form-group">
+                                    <label>Tipo de Descuento</label>
+                                    <div class="input-icon-wrapper">
+                                        <i class="fas fa-percentage"></i>
+                                        <select name="discount_type" class="form-control">
+                                            <option value="percentage">Porcentaje (%)</option>
+                                            <option value="fixed_amount">Monto Fijo ($)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Valor del Descuento</label>
+                                    <div class="input-icon-wrapper">
+                                        <i class="fas fa-dollar-sign"></i>
+                                        <input type="number" name="discount_value" step="0.01" class="form-control" placeholder="10">
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="drawerBundlePriceField" class="form-group" style="display:none;">
+                                <label>Precio Final del Paquete</label>
+                                <div class="input-icon-wrapper">
+                                    <i class="fas fa-tag"></i>
+                                    <input type="number" name="bundle_price" step="0.01" class="form-control" placeholder="99.90">
+                                </div>
+                            </div>
+                            <div id="drawerConditionFields" class="form-row"></div>
+                            <div class="profit-analysis" id="drawerProfitBox">
+                                <div class="profit-title"><i class="fas fa-chart-pie"></i> Análisis de Rentabilidad</div>
+                                <div class="profit-row">
+                                    <span>Ganancia Actual:</span>
+                                    <span class="profit-value" id="drawerCurrentProfit">$0.00</span>
+                                </div>
+                                <div class="profit-row">
+                                    <span>Ganancia con Promo:</span>
+                                    <span class="profit-value" id="drawerNewProfit">$0.00</span>
+                                </div>
+                                <div class="profit-row profit-diff" id="drawerProfitDiffRow">
+                                    <span>Diferencia:</span>
+                                    <span class="profit-value" id="drawerProfitDiff">$0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-panel" id="dtab2">
+                        <div class="drawer-scroll">
+                            <div class="grid-header" style="padding:0 0 10px;">
+                                <div class="input-icon-wrapper" style="width:100%;">
+                                    <i class="fas fa-search"></i>
+                                    <input type="text" id="drawerProductSearch" placeholder="Buscar producto..." class="form-control">
+                                </div>
+                            </div>
+                            <div id="drawerProductsGrid" class="products-grid-container" style="flex:1; overflow-y:auto;"></div>
+                            <div id="drawerSelectedSection" class="selected-products-panel" style="display:none; margin-top:10px;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                                    <label style="font-weight:600; font-size:0.85rem;">Seleccionados</label>
+                                    <span class="badge" id="drawerSelectedCount" style="background:var(--primary-color); color:white; padding:2px 8px; border-radius:10px; font-size:0.75rem;">0</span>
+                                </div>
+                                <div id="drawerSelectedList" style="display:flex; flex-wrap:wrap; gap:6px; max-height:80px; overflow-y:auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                <div class="drawer-actions">
+                    <button type="button" class="btn-cancel" id="cancelDrawerBtn">Cancelar</button>
+                    <button type="button" class="btn-save" id="saveDrawerBtn">Guardar Promoción</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="js/sidebar-loader.js"></script>
     <script src="js/app.js"></script>

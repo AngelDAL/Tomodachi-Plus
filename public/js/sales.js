@@ -109,6 +109,31 @@ function initPOS() {
       setupHistoryModal(); 
   }
 
+  // Inicializar menú contextual y preferencias
+  initContextMenu();
+
+  // View order select
+  const viewOrderSelect = document.getElementById('viewOrderSelect');
+  if (viewOrderSelect) {
+    viewOrderSelect.addEventListener('change', () => {
+      applyPrefsAndRender();
+    });
+  }
+
+  // Reset view prefs
+  const resetViewBtn = document.getElementById('resetViewPrefsBtn');
+  if (resetViewBtn) {
+    resetViewBtn.addEventListener('click', () => {
+      try {
+        const storeId = document.body.getAttribute('data-store-id') || '1';
+        localStorage.removeItem('pos_prefs_' + storeId);
+      } catch {}
+      if (viewOrderSelect) viewOrderSelect.value = 'default';
+      showNotification('Orden restaurado', 'info');
+      filterAndRenderProducts();
+    });
+  }
+
   // Persistencia: Cargar carritos guardados (Sistema Multi-Tab)
   const savedCarts = localStorage.getItem('tomodachi_multi_carts');
   if (savedCarts) {
@@ -161,6 +186,11 @@ function initPOS() {
 
   loadCategoriesAndProducts();
   loadActivePromotions();
+
+  // Iniciar sync si hay sesión activa
+  if (displaySessionUUID) {
+    startSyncInterval();
+  }
 }
 
 function bindEvents() {
@@ -240,6 +270,66 @@ function bindEvents() {
         toggleCustomerBtn.addEventListener('click', () => {
              if(configDropdown) configDropdown.classList.add('hidden');
              // La acción la maneja initCustomerDisplay
+        });
+    }
+
+    // Botón para copiar enlace de pantalla de cliente (para tablet)
+    const copyDisplayLinkBtn = document.getElementById('copyDisplayLinkBtn');
+    if (copyDisplayLinkBtn) {
+        copyDisplayLinkBtn.addEventListener('click', async () => {
+            if (configDropdown) configDropdown.classList.add('hidden');
+
+            try {
+                // Enviar carrito actual al servidor para crear/actualizar sesión
+                const payload = {
+                    cart: getCombinedCartForDisplay(),
+                    totals: calculateTotalsForDisplay(),
+                    storeInfo: {
+                        name: localStorage.getItem('tomodachi_store_name') || document.querySelector('.sidebar-header h2')?.textContent || 'Tomodachi',
+                        logo: ''
+                    },
+                    activeTab: parseInt(CURRENT_TAB),
+                    session: displaySessionUUID || undefined
+                };
+
+                const res = await fetch('../api/sales/cart_sync.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (json.success && json.data && json.data.session) {
+                    displaySessionUUID = json.data.session;
+                    try { localStorage.setItem('tomodachi_display_session', displaySessionUUID); } catch (_) {}
+                    startSyncInterval();
+                    showNotification('✓ Enlace generado. El display se actualiza automáticamente', 'success');
+                }
+
+                if (!displaySessionUUID) {
+                    showNotification('Error al crear sesión', 'error');
+                    return;
+                }
+
+                // Generar URL con el UUID de sesión
+                const baseUrl = window.location.origin + '/Tomodachi/public/customer-display.html';
+                const url = baseUrl + '?cart=' + displaySessionUUID;
+
+                navigator.clipboard.writeText(url).then(() => {
+                    showNotification('✓ Enlace copiado al portapapeles', 'success');
+                }).catch(() => {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = url;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    showNotification('✓ Enlace copiado al portapapeles', 'success');
+                });
+            } catch (e) {
+                console.error('Error al crear sesión:', e);
+                showNotification('Error al generar enlace', 'error');
+            }
         });
     }
 
@@ -428,7 +518,7 @@ async function searchProducts(term) {
     searchResults.innerHTML = list.map((p, index) => {
       const imagePath = getRelativeImagePath(p.image_path);
       return `
-      <div class="gallery-item" data-id="${p.product_id}" data-price="${p.price}" data-stock="${p.stock_quantity !== undefined ? p.stock_quantity : ''}" data-image="${p.image_path || ''}" data-is_bulk="${p.is_bulk || 0}" data-bulk_unit="${p.bulk_unit || 'kg'}" title="${escapeHtml(p.product_name)}" style="animation-delay: ${Math.min(index * 0.05, 0.5)}s">
+      <div class="gallery-item" data-id="${p.product_id}" data-price="${p.price}" data-stock="${p.stock_quantity !== undefined ? p.stock_quantity : ''}" data-image="${p.image_path || ''}" data-is_bulk="${p.is_bulk || 0}" data-bulk_unit="${p.bulk_unit || 'kg'}" data-category="${p.category_id || ''}" title="${escapeHtml(p.product_name)}" style="animation-delay: ${Math.min(index * 0.05, 0.5)}s">
         <div class="img-wrap">${imagePath ? `<img src="${imagePath}" alt="img" onerror="this.outerHTML='<span class=\\'no-img\\'>Sin imagen</span>'">` : '<span class="no-img">Sin imagen</span>'}</div>
         <div class="g-name">${escapeHtml(p.product_name)}</div>
         <div class="g-price">${formatCurrency(p.price)}</div>
@@ -450,7 +540,8 @@ async function searchProducts(term) {
           image_path: el.getAttribute('data-image'),
           stock_quantity: parseInt(el.getAttribute('data-stock')),
           is_bulk: parseInt(el.getAttribute('data-is_bulk')) || 0,
-          bulk_unit: el.getAttribute('data-bulk_unit') || 'kg'
+          bulk_unit: el.getAttribute('data-bulk_unit') || 'kg',
+          category_id: el.getAttribute('data-category') || undefined
         });
 
         // Pequeño delay para apreciar el feedback antes de cerrar resultados
@@ -461,6 +552,8 @@ async function searchProducts(term) {
         }, 250);
       });
     });
+
+    addIndicatorsToItems();
   } catch (e) {
     console.error(e);
   }
@@ -628,6 +721,12 @@ function renderCart() {
 
   if (!cartBody || !emptyCartMsg) return;
 
+  // Aplicar promociones ANTES de renderizar el HTML para que los precios
+  // de cada producto reflejen el descuento (applyPromotions se llama dentro de
+  // recalcTotals, pero recalcTotals se ejecuta DESPUÉS del renderizado)
+  applyPromotions();
+  CART.forEach(item => { item.subtotal = item.quantity * item.unit_price; });
+
   if (!CART.length) {
     cartBody.innerHTML = '';
     emptyCartMsg.style.display = 'block';
@@ -668,10 +767,19 @@ function renderCart() {
         imgHtml = `<img src="${imagePath}" alt="img" class="cart-item-img" onerror="this.outerHTML='<div class=\\'cart-item-img-placeholder\\'><i class=\\'fas fa-box\\'></i></div>'">`;
       }
 
-      // Price logic
-      let priceHtml = formatCurrency(item.subtotal);
-      if (item.unit_price < item.original_price || item.subtotal !== (item.quantity * item.unit_price)) {
-         priceHtml = formatCurrency(item.subtotal);
+      // Price logic with discount indicator
+      let priceHtml;
+      if (item.unit_price < item.original_price) {
+          const origTotal = item.quantity * item.original_price;
+          priceHtml = `<span class="cart-orig-price">${formatCurrency(origTotal)}</span> <span class="cart-disc-price">${formatCurrency(item.subtotal)}</span>`;
+          if (item.discount_type && item.discount_type !== 'none') {
+              const discountLabel = item.discount_type === 'percent' ? `${item.discount_value}%` :
+                                    item.discount_type === 'fixed' ? `-$${item.discount_value}` :
+                                    item.discount_type === 'nxn' ? `${item.nxn_buy}x${item.nxn_pay}` : '';
+              priceHtml += ` <span class="cart-disc-badge">${discountLabel}</span>`;
+          }
+      } else {
+          priceHtml = formatCurrency(item.subtotal);
       }
       
       const unitLabel = item.is_bulk == 1 ? ` ${item.bulk_unit || 'kg'}` : '';
@@ -1311,6 +1419,9 @@ function saveItemOptions() {
     item.discount_value = 0;
   }
 
+  // Marcar como editado manualmente para que applyPromotions no lo sobreescriba
+  item.manual_edit = type !== 'none';
+
   recalcItemPrice(item);
   renderCart();
   closeItemOptions();
@@ -1559,11 +1670,29 @@ function filterAndRenderProducts() {
             filtered.sort((a, b) => a.product_name.localeCompare(b.product_name));
             break;
         case 'newest':
-            // Asumiendo que IDs más altos son más nuevos si no hay fecha
             filtered.sort((a, b) => b.product_id - a.product_id); 
             break;
         default:
-            // "Relevancia" o Default (por ID o nombre original)
+            // "Relevancia" o Default — aplicar preferencias
+            const viewOrder = document.getElementById('viewOrderSelect');
+            const viewVal = viewOrder ? viewOrder.value : 'default';
+            if (viewVal === 'favorites') {
+                filtered.sort((a, b) => {
+                    const prefs = getPrefs();
+                    const aFav = prefs.favorites.indexOf(a.product_id);
+                    const bFav = prefs.favorites.indexOf(b.product_id);
+                    return (aFav > -1 ? aFav - 10000 : 0) - (bFav > -1 ? bFav - 10000 : 0);
+                });
+            } else if (viewVal === 'pinned') {
+                filtered.sort((a, b) => {
+                    const prefs = getPrefs();
+                    const aPin = prefs.pinned.indexOf(a.product_id);
+                    const bPin = prefs.pinned.indexOf(b.product_id);
+                    return (aPin > -1 ? aPin - 10000 : 0) - (bPin > -1 ? bPin - 10000 : 0);
+                });
+            } else {
+                filtered = applyPrefsToFiltered(filtered);
+            }
             break;
     }
 
@@ -1650,8 +1779,9 @@ function renderGallery(list, animate = false) {
            data-image="${p.image_path || ''}" 
            data-is_bulk="${p.is_bulk || 0}" 
            data-bulk_unit="${p.bulk_unit || 'kg'}" 
+           data-category="${p.category_id || ''}"
            title="${escapeHtml(p.product_name)}">
-           
+            
         <div class="img-wrap">
             ${imagePath ? `<img src="${imagePath}" loading="lazy" alt="${escapeHtml(p.product_name)}" onerror="this.parentNode.innerHTML='<i class=\\'fas fa-box\\'></i>'">` : '<i class="fas fa-box" style="color:#eee; font-size:1.5rem;"></i>'}
             ${stockBadge}
@@ -1671,10 +1801,10 @@ function renderGallery(list, animate = false) {
   Array.from(productGallery.querySelectorAll('.gallery-item')).forEach(el => {
       el.addEventListener('click', () => {
         // Feedback visual
-        const img = el.querySelector('.img-wrap');
-        if(img) {
-            img.style.transform = 'scale(0.95)';
-            setTimeout(() => img.style.transform = '', 150);
+        const imgWrap = el.querySelector('.img-wrap');
+        if(imgWrap) {
+            imgWrap.style.transform = 'scale(0.95)';
+            setTimeout(() => imgWrap.style.transform = '', 150);
         }
 
         addProductToCart({
@@ -1684,15 +1814,302 @@ function renderGallery(list, animate = false) {
           image_path: el.getAttribute('data-image'),
           stock_quantity: el.getAttribute('data-stock'),
           is_bulk: parseInt(el.getAttribute('data-is_bulk')) || 0,
-          bulk_unit: el.getAttribute('data-bulk_unit') || 'kg'
+          bulk_unit: el.getAttribute('data-bulk_unit') || 'kg',
+          category_id: el.getAttribute('data-category') || undefined
         });
       });
   });
+
+  addIndicatorsToItems();
 }
 
 
 
-// Funciones de barra de categorías obsoletas eliminadas durante refactorización.
+// ============================================================
+// User Preferences (Favorites, Pinned, View Order)
+// ============================================================
+function getPrefs() {
+  try {
+    const storeId = document.body.getAttribute('data-store-id') || '1';
+    const raw = localStorage.getItem('pos_prefs_' + storeId);
+    return raw ? JSON.parse(raw) : { favorites: [], pinned: [], orderBy: 'default' };
+  } catch { return { favorites: [], pinned: [], orderBy: 'default' }; }
+}
+
+function savePrefs(prefs) {
+  try {
+    const storeId = document.body.getAttribute('data-store-id') || '1';
+    localStorage.setItem('pos_prefs_' + storeId, JSON.stringify(prefs));
+  } catch {}
+}
+
+function toggleFavorite(productId) {
+  const prefs = getPrefs();
+  const idx = prefs.favorites.indexOf(productId);
+  if (idx > -1) { prefs.favorites.splice(idx, 1); }
+  else { prefs.favorites.unshift(productId); }
+  savePrefs(prefs);
+  return prefs.favorites.indexOf(productId) > -1;
+}
+
+function togglePinned(productId) {
+  const prefs = getPrefs();
+  const idx = prefs.pinned.indexOf(productId);
+  if (idx > -1) { prefs.pinned.splice(idx, 1); }
+  else { prefs.pinned.unshift(productId); }
+  savePrefs(prefs);
+  return prefs.pinned.indexOf(productId) > -1;
+}
+
+function isFavorite(productId) {
+  return getPrefs().favorites.includes(productId);
+}
+
+function isPinned(productId) {
+  return getPrefs().pinned.includes(productId);
+}
+
+// ============================================================
+// Context Menu for Gallery Items
+// ============================================================
+let _ctxProductId = null;
+let _ctxCategoryId = null;
+
+function initContextMenu() {
+  const overlay = document.getElementById('productContextMenu');
+  if (!overlay) return;
+
+  overlay.querySelectorAll('.context-menu-item').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const action = btn.dataset.action;
+      handleContextAction(action, _ctxProductId, _ctxCategoryId);
+      closeContextMenu();
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!overlay.classList.contains('hidden') && !overlay.contains(e.target)) {
+      closeContextMenu();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeContextMenu();
+  });
+
+  setupContextMenuEvents();
+}
+
+function setupContextMenuEvents() {
+  const containers = [
+    document.getElementById('productGallery'),
+    document.getElementById('searchResults')
+  ];
+
+  containers.forEach(container => {
+    if (!container) return;
+
+    container.addEventListener('contextmenu', (e) => {
+      const item = e.target.closest('.gallery-item');
+      if (!item) return;
+      e.preventDefault();
+      showContextMenu(e, item);
+    });
+
+    let longPressTimer = null;
+    container.addEventListener('touchstart', (e) => {
+      const item = e.target.closest('.gallery-item');
+      if (!item) return;
+      longPressTimer = setTimeout(() => {
+        longPressTimer = null;
+        e.preventDefault();
+        showContextMenu(e, item);
+      }, 500);
+    }, { passive: false });
+
+    container.addEventListener('touchmove', () => {
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    }, { passive: true });
+
+    container.addEventListener('touchend', () => {
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    }, { passive: true });
+
+    container.addEventListener('touchcancel', () => {
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    }, { passive: true });
+  });
+}
+
+function showContextMenu(e, item) {
+  _ctxProductId = parseInt(item.dataset.id);
+  _ctxCategoryId = item.dataset.category ? parseInt(item.dataset.category) : null;
+
+  const overlay = document.getElementById('productContextMenu');
+  const nameEl = document.getElementById('contextMenuProductName');
+  const favCheck = document.getElementById('ctxFavCheck');
+  const pinCheck = document.getElementById('ctxPinCheck');
+
+  nameEl.textContent = item.querySelector('h4')?.textContent || item.querySelector('.g-name')?.textContent || 'Producto';
+  
+  const prefs = getPrefs();
+  favCheck.textContent = prefs.favorites.includes(_ctxProductId) ? '✓' : '';
+  pinCheck.textContent = prefs.pinned.includes(_ctxProductId) ? '✓' : '';
+
+  const x = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+  const y = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+
+  overlay.classList.remove('hidden');
+  overlay.style.left = '';
+  overlay.style.right = '';
+  overlay.style.top = '';
+  overlay.style.bottom = '';
+
+  const w = overlay.offsetWidth || 200;
+  const h = overlay.offsetHeight || 220;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  let left = x, top = y;
+  if (left + w + 10 > vw) left = vw - w - 10;
+  if (top + h + 10 > vh) top = vh - h - 10;
+  if (left < 10) left = 10;
+  if (top < 10) top = 10;
+
+  overlay.style.left = left + 'px';
+  overlay.style.top = top + 'px';
+}
+
+function closeContextMenu() {
+  const overlay = document.getElementById('productContextMenu');
+  if (overlay) overlay.classList.add('hidden');
+  _ctxProductId = null;
+  _ctxCategoryId = null;
+}
+
+function handleContextAction(action, productId, categoryId) {
+  switch (action) {
+    case 'favorite': {
+      const nowFav = toggleFavorite(productId);
+      showNotification(nowFav ? '★ Añadido a favoritos' : '☆ Quitado de favoritos', 'info');
+      applyPrefsAndRender();
+      break;
+    }
+    case 'pin': {
+      const nowPinned = togglePinned(productId);
+      showNotification(nowPinned ? '📌 Producto fijado al inicio' : '📌 Producto desfijado', 'info');
+      applyPrefsAndRender();
+      break;
+    }
+    case 'edit': {
+      window.location.href = 'inventory.html';
+      break;
+    }
+    case 'view-category': {
+      if (categoryId) {
+        const catFilter = document.getElementById('categoryFilter');
+        if (catFilter) {
+          catFilter.value = categoryId;
+          catFilter.dispatchEvent(new Event('change'));
+        }
+      } else {
+        showNotification('Este producto no tiene categoría', 'warning');
+      }
+      break;
+    }
+  }
+}
+
+// ============================================================
+// Apply preferences to product ordering
+// ============================================================
+function applyPrefsToFiltered(filtered) {
+  const prefs = getPrefs();
+  return [...filtered].sort((a, b) => {
+    const aFav = prefs.favorites.indexOf(a.product_id);
+    const bFav = prefs.favorites.indexOf(b.product_id);
+    const aPin = prefs.pinned.indexOf(a.product_id);
+    const bPin = prefs.pinned.indexOf(b.product_id);
+
+    const aScore = (aPin > -1 ? -10000 + aPin : 0) + (aFav > -1 ? -5000 + aFav : 0);
+    const bScore = (bPin > -1 ? -10000 + bPin : 0) + (bFav > -1 ? -5000 + bFav : 0);
+
+    return aScore - bScore;
+  });
+}
+
+// ============================================================
+// Add indicators to gallery items
+// ============================================================
+function addIndicatorsToItems() {
+  const prefs = getPrefs();
+  document.querySelectorAll('.gallery-item').forEach(el => {
+    const id = parseInt(el.dataset.id);
+    let indicators = el.querySelector('.item-indicators');
+    if (!indicators) {
+      indicators = document.createElement('div');
+      indicators.className = 'item-indicators';
+      el.style.position = 'relative';
+      el.appendChild(indicators);
+    }
+    indicators.innerHTML = '';
+    if (prefs.pinned.includes(id)) {
+      const i = document.createElement('i');
+      i.className = 'fas fa-thumbtack';
+      i.title = 'Fijado';
+      indicators.appendChild(i);
+    }
+    if (prefs.favorites.includes(id)) {
+      const i = document.createElement('i');
+      i.className = 'fas fa-star';
+      i.title = 'Favorito';
+      indicators.appendChild(i);
+    }
+  });
+}
+
+// ============================================================
+// Re-run render with preferences
+// ============================================================
+function applyPrefsAndRender() {
+  let filtered = allProducts;
+
+  if (activeCategoryId && activeCategoryId !== 'all') {
+    filtered = filtered.filter(p => String(p.category_id || '') === String(activeCategoryId));
+  }
+
+  const viewOrder = document.getElementById('viewOrderSelect');
+  const sortVal = viewOrder ? viewOrder.value : 'default';
+
+  if (sortVal === 'default') {
+    filtered = applyPrefsToFiltered(filtered);
+  } else if (sortVal === 'favorites') {
+    filtered = [...filtered].sort((a, b) => {
+      const prefs = getPrefs();
+      const aFav = prefs.favorites.indexOf(a.product_id);
+      const bFav = prefs.favorites.indexOf(b.product_id);
+      return (aFav > -1 ? aFav - 10000 : 0) - (bFav > -1 ? bFav - 10000 : 0);
+    });
+  } else if (sortVal === 'pinned') {
+    filtered = [...filtered].sort((a, b) => {
+      const prefs = getPrefs();
+      const aPin = prefs.pinned.indexOf(a.product_id);
+      const bPin = prefs.pinned.indexOf(b.product_id);
+      return (aPin > -1 ? aPin - 10000 : 0) - (bPin > -1 ? bPin - 10000 : 0);
+    });
+  }
+
+  renderGallery(filtered);
+
+  const favCheck = document.getElementById('ctxFavCheck');
+  const pinCheck = document.getElementById('ctxPinCheck');
+  if (favCheck && _ctxProductId) {
+    const prefs = getPrefs();
+    favCheck.textContent = prefs.favorites.includes(_ctxProductId) ? '✓' : '';
+    pinCheck.textContent = prefs.pinned.includes(_ctxProductId) ? '✓' : '';
+  }
+}
 
 // Funcionalidad de escáner
 async function fetchByCode(code) {
@@ -2071,14 +2488,14 @@ function injectMoneyPanelStyles() {
             box-shadow: 0 4px 20px rgba(0,0,0,0.15);
             border-radius: 8px;
             padding: 15px;
-            z-index: 9999;
+            z-index: 10001;
         }
         
         .money-panel-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.5);
-            z-index: 1999;
+            z-index: 10000;
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.3s;
@@ -2116,7 +2533,7 @@ function injectMoneyPanelStyles() {
                 border: none;
                 box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
                 padding: 20px;
-                z-index: 2000;
+                z-index: 10001;
                 transform: translateY(100%);
                 transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
                 display: block !important;
@@ -2729,6 +3146,13 @@ if (document.readyState === 'loading') {
 
 let customerDisplayWindow = null;
 let customerDisplayChannel = null;
+let displaySessionUUID = null;
+
+// Restaurar UUID de sesión guardado
+try {
+  const saved = localStorage.getItem('tomodachi_display_session');
+  if (saved) displaySessionUUID = saved;
+} catch (_) {};
 
 // Inicializar sistema de pantalla de cliente
 function initCustomerDisplay() {
@@ -2819,31 +3243,52 @@ function openCustomerDisplay() {
   }
 }
 
+// Combinar todos los carritos para enviar al display
+function getCombinedCartForDisplay() {
+  const allItems = [];
+  Object.keys(MULTI_CARTS).forEach(tabId => {
+    const items = MULTI_CARTS[tabId] || [];
+    if (items.length > 0) {
+      items.forEach(item => {
+        allItems.push({
+          ...item,
+          cart_tab: parseInt(tabId),
+          is_active: tabId === CURRENT_TAB
+        });
+      });
+    }
+  });
+  return allItems;
+}
+
+function calculateTotalsForDisplay() {
+  let allSubtotal = 0;
+  Object.keys(MULTI_CARTS).forEach(tabId => {
+    const items = MULTI_CARTS[tabId] || [];
+    items.forEach(item => {
+      allSubtotal += (item.subtotal || item.quantity * item.unit_price);
+    });
+  });
+  return {
+    subtotal: allSubtotal,
+    discount: parseFloat(discountInput?.value) || 0,
+    tax: parseFloat(taxInput?.value) || 0,
+    total: Math.max(0, allSubtotal - (parseFloat(discountInput?.value) || 0) + (parseFloat(taxInput?.value) || 0))
+  };
+}
+
 // Enviar datos del carrito a la pantalla de cliente
 function sendCartToCustomerDisplay() {
-  // Usar CART directamente ya que es el carrito activo
-  const cart = CART;
-  
-  // Calcular totales
-  const totals = calculateTotals();
-
-  // Obtener info de la tienda
+  const allItems = getCombinedCartForDisplay();
+  const totals = calculateTotalsForDisplay();
   const storeName = localStorage.getItem('tomodachi_store_name') || document.querySelector('.sidebar-header h2')?.textContent || 'Tomodachi';
-  
-  // Intentar obtener logo si existe (prioridad: elemento navStoreLogo, luego localStorage, luego default)
-  const navLogo = document.getElementById('navStoreLogo');
-  const storeLogo = (navLogo && navLogo.src && !navLogo.src.endsWith('default-logo.png')) 
-                    ? navLogo.src 
-                    : (localStorage.getItem('tomodachi_store_logo') || 'assets/images/default-logo.png');
 
   const data = {
     type: 'cart_update',
-    cart: cart,
+    cart: allItems,
     totals: totals,
-    storeInfo: {
-        name: storeName,
-        logo: storeLogo
-    },
+    storeInfo: { name: storeName, logo: '' },
+    activeTab: parseInt(CURRENT_TAB),
     timestamp: Date.now()
   };
 
@@ -2856,11 +3301,27 @@ function sendCartToCustomerDisplay() {
     }
   }
 
-  // Fallback: localStorage
+  // localStorage fallback (same-browser cross-tab)
   try {
     localStorage.setItem('tomodachi_customer_display', JSON.stringify(data));
   } catch (error) {
     console.error('Error guardando en localStorage:', error);
+  }
+
+  // Servidor con UUID de sesión
+  if (displaySessionUUID) {
+    fetch('../api/sales/cart_sync.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        session: displaySessionUUID,
+        cart: data.cart,
+        totals: data.totals,
+        storeInfo: data.storeInfo,
+        activeTab: data.activeTab
+      })
+    }).catch(err => console.warn('cart_sync error:', err));
   }
 }
 
@@ -2891,24 +3352,30 @@ function calculateTotals() {
   };
 }
 
-// Hook para actualizar pantalla cuando cambia el carrito
+// Sincronización periódica: cada 2s si hay sesión activa
+let syncInterval = null;
+function startSyncInterval() {
+  if (syncInterval) clearInterval(syncInterval);
+  syncInterval = setInterval(() => {
+    if (displaySessionUUID) {
+      sendCartToCustomerDisplay();
+    }
+  }, 2000);
+}
+
+// Llamar también al cambiar el carrito (además del intervalo)
 const originalRenderCart = renderCart;
 renderCart = function() {
   originalRenderCart.apply(this, arguments);
-  
-  // Enviar actualización a pantalla de cliente
-  if (customerDisplayWindow && !customerDisplayWindow.closed) {
+  if ((customerDisplayWindow && !customerDisplayWindow.closed) || displaySessionUUID) {
     sendCartToCustomerDisplay();
   }
 };
 
-// Hook para actualizar cuando cambian los totales
 const originalRecalcTotals = recalcTotals;
 recalcTotals = function() {
   originalRecalcTotals.apply(this, arguments);
-  
-  // Enviar actualización a pantalla de cliente
-  if (customerDisplayWindow && !customerDisplayWindow.closed) {
+  if ((customerDisplayWindow && !customerDisplayWindow.closed) || displaySessionUUID) {
     sendCartToCustomerDisplay();
   }
 };
@@ -2957,8 +3424,9 @@ function applyPromotions() {
     CART.forEach(item => {
         if (!item.manual_edit) {
              item.unit_price = item.original_price;
+             item.subtotal = item.quantity * item.unit_price;
              item.promo_applied = null;
-             item.bundle_data = null; // Reset bundle meta
+             item.bundle_data = null;
         }
     });
 
@@ -2976,9 +3444,13 @@ function applyPromotions() {
         }
     });
 
+    // Recalcular subtotals después de aplicar promos
+    CART.forEach(item => {
+        item.subtotal = item.quantity * item.unit_price;
+    });
+
     // 2. Apply Bill-level promotions
-    // Calculate subtotal after item discounts
-    let subtotal = CART.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
+    let subtotal = CART.reduce((sum, item) => sum + item.subtotal, 0);
     
     ACTIVE_PROMOTIONS.forEach(promo => {
         if (promo.type === 'bill_discount') {

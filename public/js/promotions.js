@@ -247,13 +247,62 @@ document.addEventListener("DOMContentLoaded", () => {
     loadPromotions();
     setupEventListeners();
 
-    if (openBtn) openBtn.addEventListener("click", (e) => { e.preventDefault(); openPromoModal(); });
     if (closeBtn) closeBtn.addEventListener("click", (e) => { e.preventDefault(); closePromoModal(); });
     if (promoModal) promoModal.addEventListener("click", (e) => { if (e.target === promoModal) closePromoModal(); });
 
+    // Drawer init
+    promoDrawer = document.getElementById("promoDrawer");
+    const closeDrawerBtn = document.getElementById("closePromoDrawerBtn");
+    const cancelDrawerBtn = document.getElementById("cancelDrawerBtn");
+    const saveDrawerBtn = document.getElementById("saveDrawerBtn");
+    const drawerProductSearch = document.getElementById("drawerProductSearch");
+
+    if (closeDrawerBtn) closeDrawerBtn.addEventListener("click", closePromoDrawer);
+    if (cancelDrawerBtn) cancelDrawerBtn.addEventListener("click", closePromoDrawer);
+    if (saveDrawerBtn) saveDrawerBtn.addEventListener("click", saveDrawerPromotion);
+    if (promoDrawer) promoDrawer.addEventListener("click", (e) => {
+        if (e.target === promoDrawer) closePromoDrawer();
+    });
+
+    document.querySelectorAll('#promoDrawer .drawer-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('#promoDrawer .drawer-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('#promoDrawer .tab-panel').forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            const panel = document.getElementById(tab.dataset.dtab);
+            if (panel) panel.classList.add('active');
+        });
+    });
+
+    if (drawerProductSearch) {
+        drawerProductSearch.addEventListener("input", (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = allProducts.filter(p =>
+                p.product_name.toLowerCase().includes(term) ||
+                (p.barcode && p.barcode.includes(term))
+            );
+            renderDrawerProducts(filtered);
+        });
+    }
+
+    document.querySelector('#promoFormDrawer [name="type"]')?.addEventListener('change', updateDrawerFields);
+
+    // Open modal or drawer based on viewport
+    if (openBtn) {
+        openBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            if (window.innerWidth <= 768) {
+                openPromoDrawer();
+            } else {
+                openPromoModal();
+            }
+        });
+    }
+
     document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && promoModal?.classList.contains("show")) {
-            closePromoModal();
+        if (e.key === "Escape") {
+            if (promoModal?.classList.contains("show")) closePromoModal();
+            if (promoDrawer?.classList.contains("show")) closePromoDrawer();
         }
     });
 });
@@ -514,31 +563,6 @@ async function loadPromotions() {
     }
 }
 
-function renderPromotions(promotions) {
-    const list = document.getElementById("promotionsList");
-    if (!promotions || promotions.length === 0) {
-        list.innerHTML = "<p style='text-align:center; color:#888;'>No hay promociones activas.</p>";
-        return;
-    }
-    list.innerHTML = promotions.map(p => `
-        <div class="promo-card ${p.is_active == 1 ? "" : "inactive"}">
-            <div class="promo-details">
-                <h3><span class="status-indicator ${p.is_active == 1 ? 'active' : ''}"></span>${p.name}</h3>
-                <div class="promo-meta">
-                    <span><i class="fas fa-calendar"></i> ${new Date(p.start_date).toLocaleDateString()} - ${new Date(p.end_date).toLocaleDateString()}</span>
-                    <span><i class="fas fa-tag"></i> ${formatType(p.type)}</span>
-                    <span><i class="fas fa-percent"></i> ${p.type === "bundle" ? "$" + parseFloat(p.discount_value).toFixed(2) + " (Fijo)" : parseFloat(p.discount_value) + (p.discount_type === "percentage" ? "%" : "$") + " OFF"}</span>
-                </div>
-            </div>
-            <div class="promo-actions">
-                <button class="btn btn-sm btn-info" onclick="openPromoModal(${p.promotion_id}, true)" title="Ver Detalles"><i class="fas fa-eye"></i></button>
-                <button class="btn btn-sm btn-primary" onclick="openPromoModal(${p.promotion_id}, false)" title="Editar"><i class="fas fa-edit"></i></button>
-                <button class="btn btn-sm btn-danger" onclick="deletePromotion(${p.promotion_id})" title="Eliminar"><i class="fas fa-trash"></i></button>
-            </div>
-        </div>
-    `).join("");
-}
-
 async function savePromotion(e) {
     e.preventDefault();
 
@@ -647,3 +671,475 @@ function formatType(type) {
     const types = { "simple_discount": "Simple", "bulk_discount": "Volumen", "bill_discount": "Total", "bundle": "Paquete" };
     return types[type] || type;
 }
+
+// ============================================================
+// PAGINATION
+// ============================================================
+const PROMO_PER_PAGE = 10;
+let currentPage = 1;
+
+function renderPromotions(promotions) {
+    const list = document.getElementById("promotionsList");
+    if (!list) return;
+    if (!promotions || promotions.length === 0) {
+        list.innerHTML = "<p style='text-align:center; color:#888; padding:40px 0;'><i class='fas fa-tags' style='font-size:2rem; color:#ddd; margin-bottom:10px; display:block;'></i>No hay promociones activas.<br><small style='color:#aaa;'>Crea una nueva para empezar</small></p>";
+        document.getElementById('promoPagination').style.display = 'none';
+        return;
+    }
+
+    const totalPages = Math.ceil(promotions.length / PROMO_PER_PAGE);
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const start = (currentPage - 1) * PROMO_PER_PAGE;
+    const pageItems = promotions.slice(start, start + PROMO_PER_PAGE);
+
+    list.innerHTML = pageItems.map(p => `
+        <div class="promo-card ${p.is_active == 1 ? "" : "inactive"}">
+            <div class="promo-details">
+                <h3>${p.name}</h3>
+                <div class="promo-meta">
+                    <span><i class="fas fa-calendar"></i> ${new Date(p.start_date).toLocaleDateString()} - ${new Date(p.end_date).toLocaleDateString()}</span>
+                    <span><i class="fas fa-tag"></i> ${formatType(p.type)}</span>
+                    <span><i class="fas fa-percent"></i> ${p.type === "bundle" ? "$" + parseFloat(p.discount_value).toFixed(2) + " (Fijo)" : parseFloat(p.discount_value) + (p.discount_type === "percentage" ? "%" : "$") + " OFF"}</span>
+                </div>
+            </div>
+            <div class="promo-actions">
+                <button class="btn btn-info" onclick="openPromoModal(${p.promotion_id}, true)" title="Ver"><i class="fas fa-eye"></i></button>
+                <button class="btn btn-primary" onclick="openPromoModal(${p.promotion_id}, false)" title="Editar"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-danger" onclick="deletePromotion(${p.promotion_id})" title="Eliminar"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    `).join("");
+
+    renderPagination(totalPages);
+}
+
+function renderPagination(totalPages) {
+    const pageNumbers = document.getElementById('pageNumbers');
+    const prevBtn = document.getElementById('prevPageBtn');
+    const nextBtn = document.getElementById('nextPageBtn');
+    const pagination = document.getElementById('promoPagination');
+
+    if (!pageNumbers) return;
+    if (totalPages <= 1) {
+        pagination.style.display = 'none';
+        return;
+    }
+    pagination.style.display = 'flex';
+
+    prevBtn.disabled = currentPage === 1;
+    nextBtn.disabled = currentPage === totalPages;
+
+    let html = '';
+    const maxVisible = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+    if (endPage - startPage < maxVisible - 1) {
+        startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<button type="button" class="page-num ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+    }
+
+    pageNumbers.innerHTML = html;
+    pageNumbers.querySelectorAll('.page-num').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentPage = parseInt(btn.dataset.page);
+            renderPromotions(loadedPromotionsData);
+        });
+    });
+
+    prevBtn.onclick = () => {
+        if (currentPage > 1) { currentPage--; renderPromotions(loadedPromotionsData); }
+    };
+    nextBtn.onclick = () => {
+        if (currentPage < totalPages) { currentPage++; renderPromotions(loadedPromotionsData); }
+    };
+}
+
+// ============================================================
+// DRAWER (mobile)
+// ============================================================
+let promoDrawer = null;
+let drawerEditingId = null;
+
+function isMobileView() {
+    return window.innerWidth <= 768;
+}
+
+function openPromoDrawer(promoId = null) {
+    const form = document.getElementById("promoFormDrawer");
+    if (!form) return;
+
+    form.reset();
+    selectedTargets = [];
+    drawerEditingId = promoId;
+
+    const titleEl = document.getElementById("promoDrawerTitle");
+    const saveBtn = document.getElementById("saveDrawerBtn");
+
+    if (promoId) {
+        const promo = loadedPromotionsData.find(p => p.promotion_id == promoId);
+        if (!promo) return;
+        titleEl.innerHTML = '<i class="fas fa-edit"></i> Editar Promoción';
+        saveBtn.textContent = 'Actualizar';
+
+        form.querySelector('[name="name"]').value = promo.name;
+        const fmtDate = (d) => d ? d.replace(' ', 'T').substring(0, 16) : '';
+        form.querySelector('[name="start_date"]').value = fmtDate(promo.start_date);
+        form.querySelector('[name="end_date"]').value = fmtDate(promo.end_date);
+        form.querySelector('[name="type"]').value = promo.type;
+        updateDrawerFields();
+
+        if (promo.type === 'bundle') {
+            const bp = form.querySelector('[name="bundle_price"]');
+            if (bp) bp.value = promo.discount_value;
+        } else {
+            const dv = form.querySelector('[name="discount_value"]');
+            const dt = form.querySelector('[name="discount_type"]');
+            if (dv) dv.value = promo.discount_value;
+            if (dt) dt.value = promo.discount_type;
+        }
+
+        const minQ = form.querySelector('[name="min_quantity"]');
+        if (minQ) minQ.value = promo.min_quantity;
+        const minP = form.querySelector('[name="min_purchase_amount"]');
+        if (minP) minP.value = promo.min_purchase_amount;
+
+        if (promo.targets && promo.targets.length > 0) {
+            selectedTargets = promo.targets.map(t => {
+                let fullInfo = {};
+                if (t.product_id) {
+                    const p = allProducts.find(prod => prod.product_id == t.product_id);
+                    if (p) {
+                        fullInfo = { name: p.product_name, price: p.price, cost: p.cost, image: p.image_url || p.image_path || p.image };
+                    } else {
+                        fullInfo = { name: t.product_name, price: 0, cost: 0 };
+                    }
+                    return { type: "product", id: t.product_id, ...fullInfo };
+                }
+                return { type: "category", id: t.category_id, name: t.category_name };
+            });
+        }
+    } else {
+        titleEl.innerHTML = '<i class="fas fa-tags"></i> Nueva Promoción';
+        saveBtn.textContent = 'Guardar Promoción';
+
+        const now = new Date();
+        const nextMonth = new Date();
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        const toLocalISOString = (date) => {
+            const offset = date.getTimezoneOffset() * 60000;
+            return (new Date(date - offset)).toISOString().slice(0, 16);
+        };
+        const startEl = form.querySelector('[name="start_date"]');
+        const endEl = form.querySelector('[name="end_date"]');
+        if (startEl) startEl.value = toLocalISOString(now);
+        if (endEl) endEl.value = toLocalISOString(nextMonth);
+        updateDrawerFields();
+    }
+
+    if (promoDrawer) {
+        promoDrawer.classList.add("show");
+        document.body.classList.add("modal-open");
+        // Reset to first tab
+        document.querySelectorAll('#promoDrawer .drawer-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('#promoDrawer .tab-panel').forEach(p => p.classList.remove('active'));
+        const firstTab = document.querySelector('#promoDrawer .drawer-tab');
+        const firstPanel = document.getElementById(firstTab?.dataset?.dtab);
+        if (firstTab) firstTab.classList.add('active');
+        if (firstPanel) firstPanel.classList.add('active');
+
+        if (allProducts.length === 0) {
+            loadProductsForDrawer();
+        } else {
+            renderDrawerProducts(allProducts);
+            renderDrawerSelected();
+        }
+    }
+}
+
+function closePromoDrawer() {
+    if (promoDrawer) {
+        promoDrawer.classList.remove("show");
+    }
+    document.body.classList.remove("modal-open");
+    const form = document.getElementById("promoFormDrawer");
+    if (form) form.reset();
+    selectedTargets = [];
+    drawerEditingId = null;
+}
+
+function updateDrawerFields() {
+    const type = document.querySelector('#promoFormDrawer [name="type"]').value;
+    const container = document.getElementById("drawerConditionFields");
+    const discountFields = document.getElementById("drawerDiscountFields");
+    const bundlePriceField = document.getElementById("drawerBundlePriceField");
+
+    container.innerHTML = "";
+
+    if (type === "bundle") {
+        discountFields.style.display = "none";
+        bundlePriceField.style.display = "block";
+        container.innerHTML = `
+            <div class="form-group">
+                <label>Cantidad Total de Artículos</label>
+                <div class="input-icon-wrapper">
+                    <i class="fas fa-cubes"></i>
+                    <input type="number" name="min_quantity" class="form-control" value="2" min="1" required>
+                </div>
+                <small style="font-size:0.75rem; color:#888;">Suma total de productos para el paquete.</small>
+            </div>
+        `;
+    } else {
+        discountFields.style.display = "flex";
+        bundlePriceField.style.display = "none";
+
+        if (type === "bill_discount") {
+            container.innerHTML = `
+                <div class="form-group">
+                    <label>Monto Mínimo de Compra</label>
+                    <div class="input-icon-wrapper">
+                        <i class="fas fa-dollar-sign"></i>
+                        <input type="number" name="min_purchase_amount" class="form-control" value="0">
+                    </div>
+                </div>
+            `;
+        } else if (type === "bulk_discount") {
+            container.innerHTML = `
+                <div class="form-group">
+                    <label>Cantidad Mínima (ej. 3 para 3x2)</label>
+                    <div class="input-icon-wrapper">
+                        <i class="fas fa-cubes"></i>
+                        <input type="number" name="min_quantity" class="form-control" value="2">
+                    </div>
+                </div>
+            `;
+        }
+    }
+    calculateDrawerProfit();
+}
+
+function calculateDrawerProfit() {
+    const type = document.querySelector('#promoFormDrawer [name="type"]').value;
+    const form = document.getElementById("promoFormDrawer");
+    const formData = new FormData(form);
+
+    let currentTotalRevenue = 0;
+    let currentTotalCost = 0;
+    let newTotalRevenue = 0;
+
+    selectedTargets.forEach(t => {
+        const price = parseFloat(t.price) || 0;
+        const cost = parseFloat(t.cost) || 0;
+        currentTotalRevenue += price;
+        currentTotalCost += cost;
+    });
+
+    if (type === "bundle") {
+        newTotalRevenue = parseFloat(formData.get("bundle_price")) || 0;
+    } else if (type === "simple_discount" || type === "bulk_discount") {
+        const discType = formData.get("discount_type");
+        const discVal = parseFloat(formData.get("discount_value")) || 0;
+        selectedTargets.forEach(t => {
+            const price = parseFloat(t.price) || 0;
+            let discountedPrice = price;
+            if (discType === "percentage") {
+                discountedPrice = price * (1 - discVal / 100);
+            } else {
+                discountedPrice = price - discVal;
+            }
+            newTotalRevenue += Math.max(0, discountedPrice);
+        });
+    } else {
+        const discType = formData.get("discount_type");
+        const discVal = parseFloat(formData.get("discount_value")) || 0;
+        if (discType === "percentage") {
+            newTotalRevenue = currentTotalRevenue * (1 - discVal / 100);
+        } else {
+            newTotalRevenue = currentTotalRevenue - discVal;
+        }
+    }
+
+    const currentProfit = currentTotalRevenue - currentTotalCost;
+    const newProfit = newTotalRevenue - currentTotalCost;
+    const diff = newProfit - currentProfit;
+
+    document.getElementById("drawerCurrentProfit").innerText = "$" + currentProfit.toFixed(2);
+    document.getElementById("drawerNewProfit").innerText = "$" + newProfit.toFixed(2);
+    const diffEl = document.getElementById("drawerProfitDiff");
+    diffEl.innerText = (diff >= 0 ? "+" : "") + "$" + diff.toFixed(2);
+    const diffRow = document.getElementById("drawerProfitDiffRow");
+    diffRow.className = "profit-row profit-diff " + (diff >= 0 ? "positive" : "negative");
+}
+
+async function loadProductsForDrawer() {
+    const grid = document.getElementById("drawerProductsGrid");
+    grid.innerHTML = "<div style='grid-column:1/-1; text-align:center; padding:20px;'>Cargando productos...</div>";
+    try {
+        const res = await fetch("../api/inventory/products.php");
+        const data = await res.json();
+        if (data.success) {
+            allProducts = data.data;
+            renderDrawerProducts(allProducts);
+        }
+    } catch (e) {
+        grid.innerHTML = "Error al cargar productos";
+    }
+}
+
+function renderDrawerProducts(products) {
+    const grid = document.getElementById("drawerProductsGrid");
+    if (products.length === 0) {
+        grid.innerHTML = "<div style='grid-column:1/-1; text-align:center; padding:20px; color:#64748b;'>No se encontraron productos</div>";
+        return;
+    }
+    grid.innerHTML = products.map(p => {
+        const isSelected = selectedTargets.some(t => t.id == p.product_id);
+        let imgSrc = getRelativeImagePath(p.image_url || p.image_path || p.image);
+        if (!imgSrc) imgSrc = 'assets/images/products/default.png';
+        const onErrorParams = "this.onerror=null;this.src='assets/images/products/default.png';";
+        return `
+            <div class="product-item-card ${isSelected ? 'selected' : ''}" onclick="toggleDrawerProduct(${p.product_id})" title="${p.product_name}">
+                <div class="product-item-img-wrapper">
+                    <img src="${imgSrc}" alt="${p.product_name}" onerror="${onErrorParams}">
+                    ${isSelected ? '<div class="selected-indicator"><i class="fas fa-check"></i></div>' : ''}
+                </div>
+                <div class="product-item-content">
+                    <div class="product-item-name">${p.product_name}</div>
+                    <div class="product-item-price">$${parseFloat(p.price).toFixed(2)}</div>
+                </div>
+            </div>
+        `;
+    }).join("");
+    renderDrawerSelected();
+}
+
+function toggleDrawerProduct(productId) {
+    const index = selectedTargets.findIndex(t => t.id == productId);
+    if (index > -1) {
+        selectedTargets.splice(index, 1);
+    } else {
+        const product = allProducts.find(p => p.product_id == productId);
+        selectedTargets.push({
+            type: "product",
+            id: productId,
+            name: product.product_name,
+            price: product.price,
+            cost: product.cost,
+            image: product.image_url || product.image_path || product.image
+        });
+    }
+    renderDrawerProducts(allProducts);
+    calculateDrawerProfit();
+}
+
+function renderDrawerSelected() {
+    const section = document.getElementById("drawerSelectedSection");
+    const list = document.getElementById("drawerSelectedList");
+    const countSpan = document.getElementById("drawerSelectedCount");
+    if (!section || !list) return;
+
+    if (countSpan) countSpan.innerText = selectedTargets.length;
+
+    if (selectedTargets.length === 0) {
+        section.style.display = 'none';
+        list.innerHTML = '';
+        return;
+    }
+    section.style.display = 'block';
+    list.innerHTML = selectedTargets.map(t => {
+        let imgTag = '';
+        if (t.image) {
+            const imgPath = getRelativeImagePath(t.image);
+            imgTag = `<img src="${imgPath}" alt="img">`;
+        } else {
+            imgTag = `<div style="width:24px;height:24px;background:#334155;border-radius:50%;margin-right:8px;display:flex;align-items:center;justify-content:center;"><i class="fas fa-box" style="font-size:10px;color:#cbd5e1;"></i></div>`;
+        }
+        return `
+            <div class="selected-chip">
+                ${imgTag}
+                <span>${t.name}</span>
+                <i class="fas fa-times remove-chip" onclick="toggleDrawerProduct(${t.id})"></i>
+            </div>
+        `;
+    }).join('');
+}
+
+async function saveDrawerPromotion() {
+    const form = document.getElementById("promoFormDrawer");
+    const type = form.querySelector('[name="type"]').value;
+
+    if (selectedTargets.length === 0 && type !== "bill_discount") {
+        showNotification("Selecciona al menos un producto", "warning");
+        return;
+    }
+
+    const payload = {
+        name: form.querySelector('[name="name"]').value,
+        description: "",
+        start_date: form.querySelector('[name="start_date"]').value,
+        end_date: form.querySelector('[name="end_date"]').value,
+        type: type,
+        discount_type: form.querySelector('[name="discount_type"]')?.value || 'percentage',
+        discount_value: form.querySelector('[name="discount_value"]')?.value || '',
+        targets: selectedTargets
+    };
+
+    if (type === 'bundle') {
+        const bp = form.querySelector('[name="bundle_price"]')?.value;
+        payload.bundle_price = bp ? bp.toString() : "";
+        payload.discount_value = "";
+    } else {
+        const dv = form.querySelector('[name="discount_value"]')?.value;
+        payload.discount_value = dv ? dv.toString() : "0";
+    }
+
+    const minQty = form.querySelector('[name="min_quantity"]');
+    const minPurch = form.querySelector('[name="min_purchase_amount"]');
+    payload.min_quantity = minQty ? (parseInt(minQty.value) || 1) : 1;
+    payload.min_purchase_amount = minPurch ? (parseFloat(minPurch.value) || 0) : 0;
+
+    let endpoint = "../api/promotions/create.php";
+    if (drawerEditingId) {
+        endpoint = "../api/promotions/update.php";
+        payload.promotion_id = drawerEditingId;
+        payload.is_active = 1;
+    }
+
+    try {
+        const res = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const text = await res.text();
+        let result;
+        try { result = JSON.parse(text); } catch (err) {
+            throw new Error("Respuesta inválida del servidor");
+        }
+
+        if (result.success) {
+            closePromoDrawer();
+            showNotification("Promoción guardada exitosamente", "success");
+            setTimeout(() => loadPromotions(), 100);
+        } else {
+            showNotification(result.message || "Error al guardar", "error");
+        }
+    } catch (e) {
+        console.error(e);
+        showNotification(e.message || "Error de conexión", "error");
+    }
+}
+
+// Override openPromoModal calls in promo cards to use drawer on mobile
+const origOpen = window.openPromoModal;
+window.openPromoModal = function(promoId, isReadOnly) {
+    if (window.innerWidth <= 768) {
+        openPromoDrawer(promoId);
+    } else {
+        origOpen(promoId, isReadOnly);
+    }
+};

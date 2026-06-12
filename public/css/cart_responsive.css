@@ -78,9 +78,33 @@
     color: var(--primary-color);
     font-size: 1rem;
     cursor: pointer;
-    /* padding-left: 0; en este layout */
     display: block;
     width: fit-content;
+    white-space: nowrap;
+}
+
+.cart-orig-price {
+    text-decoration: line-through;
+    color: #aaa;
+    font-weight: 400;
+    font-size: 0.85rem;
+    margin-right: 4px;
+}
+
+.cart-disc-price {
+    color: #dc3545;
+}
+
+.cart-disc-badge {
+    display: inline-block;
+    background: #dc3545;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: 4px;
+    vertical-align: middle;
 }
 
 /* Derecha: Stepper */
@@ -707,4 +731,44 @@
         height: auto; /* Dejar que flex lo maneje */
         flex: 1;
     }
+}
+
+/* Dropdown extras */
+.dropdown-divider {
+    height: 1px;
+    background: #eee;
+    margin: 6px 12px;
+}
+
+.dropdown-item-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 16px;
+    width: 100%;
+}
+
+.dropdown-item-row i {
+    width: 20px;
+    text-align: center;
+    color: var(--text-light);
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+.dropdown-select {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-family: inherit;
+    background: #fff;
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.dropdown-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
 }

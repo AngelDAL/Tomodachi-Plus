@@ -43,11 +43,22 @@
                 </svg>
                 Tomodachi
             </a>
-            <nav class="nav-links">
+            <button class="hamburger" id="hamburger" aria-label="Menú">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <nav class="nav-links" id="navLinks">
                 <a href="#features">Características</a>
                 <a href="#works">Cómo funciona</a>
                 <a href="#gallery">Galería</a>
                 <a href="#pricing">Precios</a>
+                <div class="nav-links-auth">
+                    <a href="login.html" class="btn btn-outline btn-sm"><span class="btn-text">Iniciar</span><i
+                            class="fas fa-sign-in-alt btn-icon"></i></a>
+                    <a href="register.html" class="btn btn-primary btn-sm"><span class="btn-text">Registro</span><i
+                            class="fas fa-user-plus btn-icon"></i></a>
+                </div>
             </nav>
             <div class="auth-buttons">
                 <a href="login.html" class="btn btn-outline"><span class="btn-text">Iniciar</span><i
@@ -319,6 +330,24 @@
     </footer>
 
     <script>
+        // Mobile hamburger menu
+        const hamburger = document.getElementById('hamburger');
+        const navLinks = document.getElementById('navLinks');
+
+        hamburger.addEventListener('click', () => {
+            hamburger.classList.toggle('active');
+            navLinks.classList.toggle('open');
+            document.body.classList.toggle('no-scroll');
+        });
+
+        navLinks.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                hamburger.classList.remove('active');
+                navLinks.classList.remove('open');
+                document.body.classList.remove('no-scroll');
+            });
+        });
+
         // Smooth scroll
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {

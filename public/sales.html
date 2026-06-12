@@ -92,8 +92,24 @@
                                         <button id="toggleCustomerDisplayBtn" class="dropdown-item">
                                             <i class="fas fa-tv"></i> <span>Pantalla Cliente</span>
                                         </button>
+                                        <button id="copyDisplayLinkBtn" class="dropdown-item">
+                                            <i class="fas fa-link"></i> <span>Obtener enlace para Tablet</span>
+                                        </button>
                                         <button id="toggleHistoryBtn" class="dropdown-item">
                                             <i class="fas fa-history"></i> <span>Historial de Ventas</span>
+                                        </button>
+                                        <div class="dropdown-divider"></div>
+                                        <div class="dropdown-header">Vista</div>
+                                        <div class="dropdown-item-row">
+                                            <i class="fas fa-sort-amount-down-alt"></i>
+                                            <select id="viewOrderSelect" class="dropdown-select">
+                                                <option value="default">Orden default</option>
+                                                <option value="favorites">Favoritos primero</option>
+                                                <option value="pinned">Fijados primero</option>
+                                            </select>
+                                        </div>
+                                        <button id="resetViewPrefsBtn" class="dropdown-item">
+                                            <i class="fas fa-undo"></i> <span>Restaurar orden</span>
                                         </button>
                                     </div>
                                 </div>
@@ -307,6 +323,34 @@
             <div class="modal-footer">
                 <button id="refreshHistoryBtn" class="btn-secondary"><i class="fas fa-sync-alt"></i> Actualizar</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Context Menu for Products -->
+    <div id="productContextMenu" class="context-menu hidden">
+        <div class="context-menu-header">
+            <span id="contextMenuProductName"></span>
+        </div>
+        <div class="context-menu-items">
+            <button class="context-menu-item" data-action="favorite">
+                <i class="fas fa-star"></i>
+                <span class="ctx-label">Favorito</span>
+                <span class="ctx-check" id="ctxFavCheck"></span>
+            </button>
+            <button class="context-menu-item" data-action="pin">
+                <i class="fas fa-thumbtack"></i>
+                <span class="ctx-label">Fijar al inicio</span>
+                <span class="ctx-check" id="ctxPinCheck"></span>
+            </button>
+            <div class="context-menu-divider"></div>
+            <button class="context-menu-item" data-action="edit">
+                <i class="fas fa-pen"></i>
+                <span class="ctx-label">Editar producto</span>
+            </button>
+            <button class="context-menu-item" data-action="view-category">
+                <i class="fas fa-tag"></i>
+                <span class="ctx-label">Ver en categoría</span>
+            </button>
         </div>
     </div>
 

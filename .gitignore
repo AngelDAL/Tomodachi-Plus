@@ -31,6 +31,7 @@ public/assets/images/logos/
 *.bak
 *.backup
 *.old
+database/backups/*.sql
 
 # Configuraci�n de IA
 api/ai/config.php
