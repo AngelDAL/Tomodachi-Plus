@@ -279,7 +279,13 @@ function notify(msg, type) {
     if (typeof showNotification === 'function') {
         showNotification(msg, type);
     } else {
-        alert(msg);
+        if (type === 'error') {
+            Toast.error(msg);
+        } else if (type === 'success') {
+            Toast.success(msg);
+        } else {
+            Toast.info(msg);
+        }
     }
 }
 
@@ -417,7 +423,8 @@ document.getElementById('addTerminalForm').addEventListener('submit', async (e) 
 });
 
 async function deleteTerminal(terminalId) {
-    if (!confirm('¿Estás seguro de eliminar esta terminal?')) return;
+    const confirmed = await Toast.confirm('¿Estás seguro de eliminar esta terminal?', { danger: true });
+    if (!confirmed) return;
     
     try {
         const res = await fetch('../api/terminals/delete.php', {

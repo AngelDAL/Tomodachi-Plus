@@ -14,7 +14,7 @@
 | Líneas JS | ~7,500 |
 | Tablas BD | 11 |
 | Tests | ❌ 0 |
-| Seguridad | ⚠️ Varias vulnerabilidades críticas |
+| Seguridad | ✅ Vulnerabilidades corregidas |
 
 ---
 
@@ -23,23 +23,23 @@
 ### 🔴 FASE 1 — Seguridad (Prioridad Máxima)
 > *Nave no despega si tiene fugas de combustible*
 
-- [ ] Mover API keys de Stability AI y Gemini a variables de entorno
-- [ ] Cerrar CORS (solo orígenes permitidos por tienda)
-- [ ] Activar SSL verification en llamadas curl externas
-- [ ] Sanitizar path traversal en uploads de imágenes
-- [ ] Remover shell_exec de `create_backup.php`
-- [ ] Regenerar session ID después de login exitoso
-- [ ] Rate limiting en endpoints de auth (login, forgot password)
-- [ ] No enviar contraseñas en texto plano por email
-- [ ] Remover archivos debug en raíz (debug_promotions.php, test_*)
+- [x] Mover API keys de Stability AI y Gemini a variables de entorno
+- [x] Cerrar CORS (solo orígenes permitidos por tienda)
+- [x] Activar SSL verification en llamadas curl externas
+- [x] Sanitizar path traversal en uploads de imágenes
+- [x] Remover shell_exec de `create_backup.php`
+- [x] Regenerar session ID después de login exitoso
+- [x] Rate limiting en endpoints de auth (login, forgot password)
+- [x] No enviar contraseñas en texto plano por email
+- [x] Remover archivos debug en raíz (debug_promotions.php, test_*)
 
 ### 🟡 FASE 2 — UX/UI (Ganancia Rápida)
 > *Primera impresión = ultima impresión*
 
 - [ ] Arreglar URL hardcodeada de `PlanManager.js` (localhost)
 - [ ] Unificar funciones duplicadas (getRelativeImagePath, showNotification)
-- [ ] Agregar loading states en operaciones asíncronas
-- [ ] Mejorar feedback visual (toast notifications en lugar de alerts nativos)
+- [x] Agregar loading states en operaciones asíncronas
+- [x] Mejorar feedback visual (toast notifications en lugar de alerts nativos)
 - [ ] Responsive: pulir navegación móvil
 - [ ] Agregar favicon y meta tags
 - [ ] Optimizar imágenes de productos (lazy loading)
@@ -106,4 +106,4 @@
 ---
 
 > *Este roadmap es vivo — se actualiza con cada revisión y feedback de usuarios.*
-> Última actualización: 2026-06-23
+> Última actualización: 2026-06-24

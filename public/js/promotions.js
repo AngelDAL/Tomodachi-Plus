@@ -60,7 +60,10 @@ let confirmCallback = null;
 function showConfirmModal(title, message, onConfirm) {
     const modal = document.getElementById('confirmModal');
     if (!modal) {
-        if (confirm(message)) onConfirm(); // Fallback
+        // If we're already in an async context, use Toast.confirm
+        Toast.confirm(message).then(result => {
+            if (result) onConfirm();
+        });
         return;
     }
 

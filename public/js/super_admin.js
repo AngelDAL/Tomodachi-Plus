@@ -154,7 +154,11 @@ async function loadAllUsers() {
 
 async function toggleStatus(userId, currentStatus) {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    if (!confirm(`¿Estás seguro de cambiar el estado a ${newStatus}?`)) return;
+    const confirmed = await Toast.confirm(`¿Estás seguro de cambiar el estado a ${newStatus}?`, { 
+        confirmText: 'Sí, cambiar estado',
+        danger: true 
+    });
+    if (!confirmed) return;
 
     try {
         const res = await fetch('../api/users/update.php', {

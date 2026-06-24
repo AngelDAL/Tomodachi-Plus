@@ -60,7 +60,7 @@ class VoiceCommander {
             };
         } else {
             console.warn('Web Speech API not supported');
-            alert('Tu navegador no soporta control por voz (Usa Chrome/Edge).');
+            Toast.warning('Tu navegador no soporta control por voz (Usa Chrome/Edge).');
         }
     }
 
@@ -246,7 +246,7 @@ class VoiceCommander {
 
         // 3. CANCEL/CLEAR: "Cancelar venta", "Borrar todo", "Limpiar"
         if (text.includes('cancelar venta') || text.includes('borrar todo') || text.includes('limpiar')) {
-            if (confirm('¿Confirmas limpiar toda la venta por voz?')) {
+            if (await Toast.confirm('¿Confirmas limpiar toda la venta por voz?')) {
                 window.posSystem.clearCart();
                 this.speak('Venta cancelada');
             }

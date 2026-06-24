@@ -109,7 +109,7 @@ class PlanManager {
         }
 
         // You can replace this with a beautiful SweetAlert
-        alert(`La función "${featureName}" está disponible solo en la versión Premium. \n\n¡Actualiza tu plan para desbloquearla!`);
+        Toast.warning(`La función "${featureName}" está disponible solo en la versión Premium. ¡Actualiza tu plan para desbloquearla!`, 6000);
     }
 }
 

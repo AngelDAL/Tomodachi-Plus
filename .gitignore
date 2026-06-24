@@ -48,3 +48,4 @@ debug_*.php
 test_*.php
 repro_issue.php
 check_insert.php
+/tmp/test_cookies*.txt
