@@ -34,7 +34,7 @@ try {
             "Accept: image/*" 
         ],
         CURLOPT_POSTFIELDS => $postFields,
-        CURLOPT_SSL_VERIFYPEER => false
+        CURLOPT_SSL_VERIFYPEER => true
     ]);
 
     $response = curl_exec($ch);

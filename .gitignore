@@ -1,5 +1,10 @@
 # Tomodachi POS - Git Ignore
 
+# Variables de entorno
+.env
+.env.local
+.env.production
+
 # Archivos de configuración sensibles
 config/database.php
 config/mail.php
@@ -24,8 +29,10 @@ public/assets/images/logos/
 *.sublime-*
 
 # Dependencias
-#/vendor/
+/vendor/
 /node_modules/
+composer.phar
+composer.lock
 
 # Archivos de backup
 *.bak
@@ -33,5 +40,11 @@ public/assets/images/logos/
 *.old
 database/backups/*.sql
 
-# Configuraci�n de IA
+# Configuración de IA (contiene API keys)
 api/ai/config.php
+
+# Archivos debug (no deberían estar en producción)
+debug_*.php
+test_*.php
+repro_issue.php
+check_insert.php

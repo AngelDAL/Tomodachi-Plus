@@ -120,7 +120,7 @@ try {
         ],
         CURLOPT_POSTFIELDS => $postFields,
         // Deshabilitar verificación SSL para entorno local WAMP
-        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_SSL_VERIFYHOST => 0
     ]);
 

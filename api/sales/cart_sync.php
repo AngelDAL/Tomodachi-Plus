@@ -12,7 +12,8 @@ require_once '../../includes/Database.class.php';
 require_once '../../includes/Response.class.php';
 require_once '../../includes/Auth.class.php';
 
-header('Access-Control-Allow-Origin: *');
+require_once __DIR__ . '/../../includes/CORS.class.php';
+setupCORS();
 header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 

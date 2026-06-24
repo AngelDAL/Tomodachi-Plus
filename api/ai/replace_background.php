@@ -62,7 +62,7 @@ try {
             "Accept: application/json" 
         ],
         CURLOPT_POSTFIELDS => $postFields,
-        CURLOPT_SSL_VERIFYPEER => false
+        CURLOPT_SSL_VERIFYPEER => true
     ]);
 
     $response = curl_exec($ch);
@@ -93,7 +93,7 @@ try {
                 "Authorization: Bearer {$apiKey}",
                 "Accept: application/json" 
             ],
-            CURLOPT_SSL_VERIFYPEER => false
+            CURLOPT_SSL_VERIFYPEER => true
         ]);
         
         $pollResponse = curl_exec($ch);
